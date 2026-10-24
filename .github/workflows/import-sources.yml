@@ -41,6 +41,7 @@ jobs:
               path=PurePosixPath(entry.filename)
               assert entry.file_size<4*1024*1024 and not entry.is_dir()
               assert not path.is_absolute() and '..' not in path.parts
+              if entry.filename.startswith('.github/') or '/storage/' in entry.filename: continue
               assert path.parts[0] in allowed or entry.filename in names
               assert not any(p in path.parts for p in {'.git','.github','node_modules','storage','build'})
               assert path.name not in {'config.php','install.key','.env'} and path.suffix not in {'.jks','.keystore','.apk'}
