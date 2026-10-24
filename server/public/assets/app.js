@@ -1,0 +1,345 @@
+/* Sector Sign 0.7.0 — dependency-free command center, mobile-first and accessible. */
+'use strict';
+const $=(q,root=document)=>root.querySelector(q);
+const esc=(str='')=>String(str??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const attr=esc;
+const langs={
+ es:{doctor:'Diagnóstico',repair:'Revisar',healthy:'Correcto',attention:'Requiere revisión',reset:'Recuperar acceso',configuration:'Configuración',quickstart:'Inicio rápido',version:'Versión',overview:'Resumen',screens:'Pantallas',media:'Contenido',playlists:'Listas',locations:'Locales',groups:'Grupos',catalog:'Inventario',users:'Usuarios',settings:'Ajustes',programs:'Programación',backup:'Respaldos',more:'Más',player:'Reproductor',online:'En línea',offline:'Desconectada',pending:'Pendiente',connected:'Conectadas',logout:'Cerrar sesión',login:'Iniciar sesión',email:'Correo electrónico',password:'Contraseña',welcome:'Publicidad bajo control',welcomeText:'Administra promociones, locales y pantallas desde cualquier lugar. Tus anuncios permanecen disponibles sin internet después de descargarse.',upload:'Subir archivo',add:'Agregar',newList:'Nueva lista',addScreen:'Vincular pantalla',save:'Guardar borrador',publish:'Publicar',search:'Buscar',noMedia:'Aún no tienes archivos',noMediaDesc:'Sube imágenes y videos para crear tu primera campaña.',noScreens:'Aún no hay pantallas',noScreensDesc:'Abre el reproductor en un TV, tablet o teléfono y vincúlalo mediante un código.',noList:'Crea tu primera lista',noListDesc:'Organiza los anuncios, define segundos y publica cuando todo esté listo.',preview:'Vista previa',edit:'Editar',remove:'Eliminar',duplicate:'Duplicar',cancel:'Cancelar',duration:'Duración',schedule:'Programación',library:'Biblioteca',items:'Elementos',draft:'Borrador',updated:'Actualizada',all:'Todos',saveChanges:'Guardar cambios',viewPlayer:'Abrir reproductor',language:'Idioma',theme:'Tema',refresh:'Actualizar',role:'Permiso',send:'Enviar',error:'Error',confirm:'Confirmar',assigned:'Asignada',applied:'Recibida',device:'Dispositivo',storage:'Almacenamiento',actions:'Acciones',minutes:'minutos',hello:'Hola',newLocation:'Nuevo local',newGroup:'Nuevo grupo',subtitle:'Centro de mando',notAuthorized:'Esta función requiere permiso de administrador',select:'Seleccionar',selected:'Seleccionados',settingsAccount:'Cuenta y equipo',lastUpdate:'Última actualización',checking:'Comprobando',checkUpdate:'Comprobar versión',serverUpdate:'Servidor actualizado',live:'Sincronizado',newRelease:'Nueva versión disponible',releaseNotes:'Cambios de esta versión'},
+ en:{doctor:'Diagnostics',repair:'Review',healthy:'Ready',attention:'Needs attention',reset:'Reset access',configuration:'Configuration',quickstart:'Quick start',version:'Version',overview:'Overview',screens:'Screens',media:'Media',playlists:'Playlists',locations:'Locations',groups:'Groups',catalog:'Inventory',users:'Users',settings:'Settings',programs:'Scheduling',backup:'Backups',more:'More',player:'Player',online:'Online',offline:'Offline',pending:'Pending',connected:'Connected',logout:'Sign out',login:'Sign in',email:'Email address',password:'Password',welcome:'Your signage, under control',welcomeText:'Manage promotions, locations and screens from anywhere. Downloaded ads remain available offline.',upload:'Upload file',add:'Add',newList:'New playlist',addScreen:'Pair screen',save:'Save draft',publish:'Publish',search:'Search',noMedia:'Your media library is empty',noMediaDesc:'Upload images and videos to create your first campaign.',noScreens:'No screens yet',noScreensDesc:'Open the player on a TV, tablet or phone and pair it with a code.',noList:'Create your first playlist',noListDesc:'Order advertisements, set duration and publish when ready.',preview:'Preview',edit:'Edit',remove:'Delete',duplicate:'Duplicate',cancel:'Cancel',duration:'Duration',schedule:'Schedule',library:'Library',items:'Items',draft:'Draft',updated:'Updated',all:'All',saveChanges:'Save changes',viewPlayer:'Open player',language:'Language',theme:'Theme',refresh:'Refresh',role:'Role',send:'Send',error:'Error',confirm:'Confirm',assigned:'Assigned',applied:'Applied',device:'Device',storage:'Storage',actions:'Actions',minutes:'minutes',hello:'Hello',newLocation:'New location',newGroup:'New group',subtitle:'Command center',notAuthorized:'Administrator access required',select:'Select',selected:'Selected',settingsAccount:'Account and device',lastUpdate:'Last update',checking:'Checking',checkUpdate:'Check version',serverUpdate:'Server up to date',live:'Synchronized',newRelease:'New version available',releaseNotes:'Changes in this version'},
+ pt:{doctor:'Diagnóstico',repair:'Verificar',healthy:'Pronto',attention:'Requer atenção',reset:'Recuperar acesso',configuration:'Configuração',quickstart:'Início rápido',version:'Versão',overview:'Resumo',screens:'Telas',media:'Conteúdo',playlists:'Listas',locations:'Locais',groups:'Grupos',catalog:'Estoque',users:'Usuários',settings:'Configurações',programs:'Programação',backup:'Backups',more:'Mais',player:'Reprodutor',online:'Online',offline:'Offline',pending:'Pendente',connected:'Conectadas',logout:'Sair',login:'Entrar',email:'E-mail',password:'Senha',welcome:'Publicidade sob controle',welcomeText:'Gerencie promoções, locais e telas de qualquer lugar. Os anúncios baixados continuam funcionando offline.',upload:'Enviar arquivo',add:'Adicionar',newList:'Nova lista',addScreen:'Vincular tela',save:'Salvar rascunho',publish:'Publicar',search:'Pesquisar',noMedia:'Sua biblioteca está vazia',noMediaDesc:'Envie imagens e vídeos para criar sua primeira campanha.',noScreens:'Nenhuma tela ainda',noScreensDesc:'Abra o reprodutor em uma TV, tablet ou telefone e use o código.',noList:'Crie sua primeira lista',noListDesc:'Organize anúncios, configure duração e publique quando estiver pronto.',preview:'Prévia',edit:'Editar',remove:'Excluir',duplicate:'Duplicar',cancel:'Cancelar',duration:'Duração',schedule:'Programação',library:'Biblioteca',items:'Itens',draft:'Rascunho',updated:'Atualizada',all:'Todos',saveChanges:'Salvar alterações',viewPlayer:'Abrir reprodutor',language:'Idioma',theme:'Tema',refresh:'Atualizar',role:'Permissão',send:'Enviar',error:'Erro',confirm:'Confirmar',assigned:'Atribuída',applied:'Aplicada',device:'Dispositivo',storage:'Armazenamento',actions:'Ações',minutes:'minutos',hello:'Olá',newLocation:'Novo local',newGroup:'Novo grupo',subtitle:'Central de comando',notAuthorized:'Requer acesso de administrador',select:'Selecionar',selected:'Selecionados',settingsAccount:'Conta e dispositivo',lastUpdate:'Última atualização',checking:'Verificando',checkUpdate:'Verificar versão',serverUpdate:'Servidor atualizado',live:'Sincronizado',newRelease:'Nova versão disponível',releaseNotes:'Novidades desta versão'}
+};
+const appBuild=window.SS_BOOT_RELEASE||{version:'0.7.0',released_at:'2026-10-24T12:03:36Z',changes:[]};
+const t=(key)=>langs[state.lang]?.[key]??langs.es[key]??key;
+const state={lang:localStorage.getItem('ss-lang')||'es',theme:localStorage.getItem('ss-theme')||'light',user:null,page:'overview',programs:[],screens:[],media:[],playlists:[],locations:[],groups:[],catalog:[],integrations:[],users:[],editorId:null,editor:null,editorItems:[],editorDirty:false,editorTab:'list',q:'',focusScreen:null,loading:false,release:appBuild,lastSync:null,liveState:'connecting',updateAvailable:false};
+document.documentElement.dataset.theme=state.theme;document.documentElement.lang=state.lang;
+const prettyReleaseDate=(value)=>{if(!value)return '—';const date=new Date(value);return isNaN(date)?String(value):new Intl.DateTimeFormat(state.lang,{dateStyle:'medium',timeStyle:'short',timeZone:'America/Lima'}).format(date)};
+const releaseVersion=()=>esc(String(state.release?.version||appBuild.version));
+const liveIndicator=()=>state.updateAvailable?'⬆ '+t('newRelease'):state.liveState==='online'?'● '+t('live'):state.liveState==='offline'?'◌ '+t('offline'):'◌ '+t('checking');
+let toastTimer;
+function toast(message,isError=false){const el=$('#toast');const div=document.createElement('div');div.className='toast-item';div.textContent=(isError?'⚠ ':'✓ ')+message;el.appendChild(div);setTimeout(()=>div.remove(),5500);}
+async function api(action,payload,method='POST'){
+    const opts={credentials:'same-origin',headers:{'X-CSRF-Token':window.SS_CSRF||''}};
+    if(payload===undefined||method==='GET'){opts.method='GET';}else{
+      opts.method='POST';if(payload instanceof FormData)opts.body=payload;else {opts.headers['Content-Type']='application/json';opts.body=JSON.stringify(payload);}
+    }
+    let response;try{response=await fetch('/api.php?action='+encodeURIComponent(action),opts);}catch{throw Error('Sin conexión con el servidor. Comprueba tu red o los servicios PHP/MySQL.');}
+    const value=await response.json().catch(()=>({error:'Respuesta inválida del servidor'}));
+    if(!response.ok||value.ok===false){if(response.status===401&&state.user){state.user=null;renderLogin();}throw Error(value.error||'No se pudo completar la operación');}
+    return value;
+}
+const nav=[['overview','▦'],['screens','▣'],['media','▧'],['playlists','☷'],['programs','◷'],['locations','⌖'],['groups','◈'],['catalog','◉'],['users','♙'],['settings','⚙'],['backup','⛁'],['doctor','✚']];
+function isAdmin(){return state.user?.role==='admin'}function canEdit(){return ['admin','editor'].includes(state.user?.role)}
+function localDate(x){if(!x)return '—';const date=new Date(String(x).replace(' ','T')+'Z');return isNaN(date)?String(x):new Intl.DateTimeFormat(state.lang,{dateStyle:'short',timeStyle:'short',timeZone:'America/Lima'}).format(date)}
+function size(bytes){if(bytes===undefined)return '';const b=Number(bytes);return b>1048576?(b/1048576).toFixed(1)+' MB':Math.max(1,Math.round(b/1024))+' KB'}
+function empty(icon,title,detail,action=''){return `<div class="empty"><div class="empty-graphic">${icon}</div><b>${esc(title)}</b><p>${esc(detail)}</p>${action}</div>`}
+function section(title,subtitle='',right=''){return `<div class="section-head"><div><h2>${esc(title)}</h2>${subtitle?`<p>${esc(subtitle)}</p>`:''}</div><div class="section-actions">${right}</div></div>`}
+const btn=(text,act,id='',extra='')=>`<button type="button" class="btn ${extra}" data-act="${attr(act)}" ${id!==''?`data-id="${attr(id)}"`:''}>${text}</button>`;
+const opt=(items,current)=>items.map(o=>`<option value="${attr(o[0])}" ${String(current)===String(o[0])?'selected':''}>${esc(o[1])}</option>`).join('');
+function navHtml(){return nav.filter(([id])=>isAdmin()||!['users','settings','backup','doctor'].includes(id)).map(([id,icon])=>`<button type="button" class="navlink ${state.page===id?'active':''}" data-act="navigate" data-id="${id}" title="${t(id)}"><span class="navico" aria-hidden="true">${icon}</span><span class="nav-label">${t(id)}</span></button>`).join('');}
+function mobileNav(){let arr=['overview','screens','playlists','media',isAdmin()?'settings':'locations'];return `<div class="mobile-nav" role="navigation" aria-label="Navegación móvil">${arr.map(id=>{let n=nav.find(x=>x[0]===id);return `<button class="${state.page===id?'active':''}" data-act="navigate" data-id="${id}"><span class="navico">${n[1]}</span>${t(id)}</button>`}).join('')}</div>`;}
+function shell(inner){
+ const title=t(state.page);$('#app').innerHTML=`<div class="shell"><aside class="sidebar"><div class="logo"><div class="logo-square">▣</div><div class="logo-text">Sector Sign<span class="logo-sub">DIGITAL SIGNAGE</span></div></div><nav class="navlist">${navHtml()}</nav><div class="sidebar-foot"><button type="button" class="version-sidebar" data-act="versionInfo">v${releaseVersion()} · ${esc(prettyReleaseDate(state.release?.released_at))}</button><div class="caption">PHP · MySQL · aaPanel</div>${btn(t('logout'),'logout','','btn-ghost btn-small')}</div></aside><div class="content"><header class="topbar"><div class="topbar-start"><div class="eyebrow">SECTOR SIGN / ${t('subtitle')}</div><h1>${esc(title)}</h1></div><div class="top-actions"><span id="live-indicator" class="live-indicator ${state.liveState}" aria-live="polite">${liveIndicator()}</span><button class="version-chip" type="button" data-act="versionInfo" title="${t('lastUpdate')}: ${esc(prettyReleaseDate(state.release?.released_at))}">v${releaseVersion()}</button><select class="lang" aria-label="${t('language')}" id="language"><option ${state.lang==='es'?'selected':''} value="es">ES</option><option ${state.lang==='en'?'selected':''} value="en">EN</option><option ${state.lang==='pt'?'selected':''} value="pt">PT</option></select><button type="button" class="iconbtn" data-act="theme" title="${t('theme')}">${state.theme==='light'?'☾':'☀'}</button><div class="user-chip">${esc(state.user?.name)} · ${esc(state.user?.role)}</div></div></header><main class="workspace">${inner}</main></div></div>${mobileNav()}`;
+}
+function renderLogin(){
+ const invite=new URLSearchParams(location.search).get('invite');const reset=new URLSearchParams(location.search).get('reset');const err=new URLSearchParams(location.search).get('auth_error');
+ const name=reset?'Restablecer contraseña':invite?'Activa tu invitación':t('login');const blurb='Una sola cuenta para administrar todas tus pantallas, grupos y campañas.';
+ $('#app').innerHTML=`<div class="auth-wrap"><div class="auth-art"><div class="logo"><span class="logo-square">▣</span>Sector Sign</div><div><h1>${t('welcome')}</h1><p>${t('welcomeText')}</p></div><div>Centro de mando · v${esc(appBuild.version)} · ${esc(prettyReleaseDate(appBuild.released_at))}</div></div><section class="auth-box"><div class="eyebrow">GESTIÓN DE PANTALLAS</div><h2>${name}</h2><p class="muted">${blurb}</p>${err?`<p class="auth-error">${esc(err)}</p>`:''}<form id="login-form">${invite?`<input type="hidden" name="token" value="${attr(invite)}"><label class="form-stack">Nombre<input class="field" name="name" required maxlength="120"></label>`:reset?`<input type="hidden" name="token" value="${attr(reset)}">`:''}${reset?'':`<label class="form-stack">${t('email')}<input class="field" name="email" type="email" placeholder="tu@empresa.com" ${invite?'disabled':''} ${invite?'':'required'} autocomplete="email"></label>`}<label class="form-stack">${t('password')}<input class="field" type="password" name="password" minlength="${invite||reset?12:1}" required autocomplete="${invite||reset?'new-password':'current-password'}"></label><button class="btn" type="submit">${reset?'Guardar nueva contraseña':invite?'Activar cuenta':t('login')} →</button></form><div class="divider"></div><div class="oauth-buttons">${!invite&&!reset?`<a class="btn btn-outline" href="/oauth.php?provider=google">◉ Google</a><a class="btn btn-outline" href="/oauth.php?provider=microsoft">▦ Microsoft / Hotmail</a>`:''}</div><p class="auth-footer">¿Primera instalación? <a href="/install.php">Configurar servidor</a>. Las cuentas se crean por invitación del administrador.</p></section></div>`;
+ $('#login-form').addEventListener('submit',async e=>{e.preventDefault();let data=Object.fromEntries(new FormData(e.target));try{await api(reset?'auth.reset_password':invite?'auth.claim_invite':'auth.login',data);if(invite||reset){history.replaceState(null,'','/');toast('Acceso configurado. Ahora inicia sesión.');renderLogin();}else await bootstrap();}catch(ex){toast(ex.message,true);}});
+}
+async function bootstrap(){
+ try{const r=await api('auth.me',undefined,'GET');window.SS_CSRF=r.csrf||window.SS_CSRF;state.user=r.user;if(!state.user){renderLogin();return;}await navigate(state.page);scheduleLivePoll(2000)}catch(ex){renderLogin();toast(ex.message,true)}
+}
+const loading=()=>`<div class="panel" style="display:grid;place-items:center;min-height:170px"><div class="loader"></div></div>`;
+async function navigate(page){
+ if(state.editorDirty&&page!=='playlists'&&state.page==='playlists'&&!confirm('Hay cambios en la lista sin guardar. ¿Salir sin guardarlos?'))return;
+ if(page!=='playlists')state.editorDirty=false;
+ if(!nav.some(x=>x[0]===page))page='overview';if(!isAdmin()&&['users','settings','backup','doctor'].includes(page))page='overview';
+ state.page=page;state.q='';shell(loading());
+ const req={overview:['dashboard','screens.list'],screens:['screens.list','locations.list','groups.list'],media:['media.list'],playlists:['playlists.list','media.list','screens.list'],locations:['locations.list','screens.list'],groups:['groups.list','screens.list'],catalog:['catalog.list','integrations.list'],users:['users.list'],settings:['settings.get'],backup:['backup.info','audit.list'],programs:['programs.list','playlists.list','screens.list','locations.list','groups.list'],doctor:['system.diagnostics']};
+ try{await Promise.all((req[page]||[]).map(async a=>{const result=await api(a,undefined,'GET');if(a==='dashboard')state.dashboard=result;else if(a==='settings.get')state.settings=result;else if(a==='backup.info')state.backupInfo=result;else if(a==='system.diagnostics')state.diagnostics=result;else if(a==='audit.list')state.audits=result.items;else state[a.split('.')[0]]=result.items||[];}));renderPage();}
+ catch(ex){shell(empty('⚠','No se pudo cargar esta sección',ex.message,btn('Reintentar','refresh')));toast(ex.message,true);}
+}
+function renderPage(){
+ const render={overview:renderOverview,screens:renderScreens,media:renderMedia,playlists:renderPlaylists,locations:renderLocations,groups:renderGroups,catalog:renderCatalog,users:renderUsers,settings:renderSettings,backup:renderBackup,doctor:renderDoctor,programs:renderPrograms};shell(render[state.page]());
+ if(state.page==='playlists'&&state.editorId)openEditor(state.editorId,false);
+}
+function mediaThumb(m,wide=false){const url='/media.php?id='+encodeURIComponent(m.id);return `<div class="thumb" ${wide?'style="width:145px"':''}>${m.kind==='video'?`<video preload="metadata" muted playsinline src="${url}#t=0.1"></video>`:`<img loading="lazy" alt="${attr(m.name||'')}" src="${url}">`}</div>`;}
+function renderOverview(){
+ const d=state.dashboard||{},s=d.stats||{};
+ const nums=[[t('screens'),s.screens??0,'▣'],[t('online'),s.online??0,'●'],[t('media'),s.media??0,'▧'],[t('playlists'),s.playlists??0,'☷']];
+ return `<div class="hero"><div><div class="eyebrow" style="color:#baddff">SECTOR SIGN</div><h2>${t('welcome')}</h2><p>${t('welcomeText')}</p></div>${btn('＋ '+t('addScreen'),'screenPair','','btn-white')}</div><div class="grid stats">${nums.map(x=>`<div class="stat" data-live-stat="${['screens','online','media','playlists'][nums.indexOf(x)]}"><span class="stat-icon">${x[2]}</span><b>${x[1]}</b><span>${esc(x[0])}</span></div>`).join('')}</div><div class="two-col"><section class="panel"><div class="row-between"><h3>Estado de pantallas</h3>${btn('Ver todas →','navigate','screens','btn-ghost btn-small')}</div>${state.screens.length?state.screens.slice(0,6).map(s=>`<div class="activity-row"><div class="activity-icon">▣</div><div class="spacer"><b>${esc(s.name)}</b><small>${esc(s.location_name||'Sin local')}</small></div>${screenStatus(s)}</div>`).join(''):empty('▣',t('noScreens'),t('noScreensDesc'),btn(t('viewPlayer'),'playerOpen','','btn-small'))}</section><section class="panel"><h3>Actividad reciente</h3><div class="activity">${(d.activity||[]).length?d.activity.map(a=>`<div class="activity-row"><div class="activity-icon">↗</div><div class="spacer"><b>${esc(a.action)}</b><small>${esc(a.actor)}</small></div><span class="caption">${esc(localDate(a.created_at))}</span></div>`).join(''):'<p class="muted">Todavía no hay actividad registrada.</p>'}</div><div class="divider"></div><p class="helper">Espacio libre en el almacenamiento local: <b>${size(d.storage_free_bytes||0)}</b>. Usa S3 para distribuir archivos grandes sin consumir el disco del VPS.</p></section></div>`;
+}
+function screenStatus(s){
+ const dt=Date.parse(String(s.last_seen_at||'').replace(' ','T')+'Z');const recent=Number.isFinite(dt)&&(Date.now()-dt<35000);
+ return `<span class="pill ${recent?'ok':'off'}">${recent?'● '+t('online'):'◌ '+t('offline')}</span>`;
+}
+function renderScreens(){
+ let filter=state.q.toLowerCase();let screens=state.screens.filter(s=>!filter||[s.name,s.location_name,s.group_name].join(' ').toLowerCase().includes(filter));
+ return `${section(t('screens'),'Conexión, anuncios aplicados y controles por dispositivo.',`${btn('＋ '+t('addScreen'),'screenPair')} ${btn('↗ '+t('viewPlayer'),'playerOpen','','btn-ghost')}`)}<div class="toolbar"><input class="search" id="screen-search" aria-label="Buscar pantallas" placeholder="Buscar pantalla o local..." value="${attr(state.q)}"><span class="caption">${screens.length} ${t('screens').toLowerCase()}</span></div>${screens.length?`<div class="screen-grid">${screens.map(s=>`<article class="screen-card" data-live-screen="${attr(s.id)}"><div class="row-between"><div class="cardtitle">${esc(s.name)}</div><span data-live-status>${screenStatus(s)}</span></div><div class="tv-preview">${s.last_capture_at?`<img loading="lazy" src="/capture.php?id=${attr(s.id)}&at=${encodeURIComponent(s.last_capture_at)}" alt="Última captura">`:`<div class="tv-message">▣<p>${esc(s.location_name||'Vista previa de pantalla')}</p><span class="caption">Captura disponible por comando</span></div>`}</div><div class="tv-stand"></div><div class="row-between"><div><div class="card-sub">⌖ ${esc(s.location_name||'Sin local')} · ${esc(s.group_name||'Sin grupo')}</div><div class="card-sub" data-live-versions>${t('assigned')}: v${s.assigned_version??'—'} · ${t('applied')}: v${s.applied_version??'—'}</div><div class="card-sub" data-live-contact>◷ ${t('lastUpdate')}: ${esc(localDate(s.last_seen_at))}</div></div>${Number(s.pending_commands)?`<span class="pill warn">${s.pending_commands} ${t('pending')}</span>`:''}</div><div data-live-device>${deviceSummary(s)}</div><div class="card-buttons">${btn(t('device'),'deviceDetails',s.id,'btn-small btn-outline')}${btn('⚙ '+t('settings'),'screenEdit',s.id,'btn-small btn-outline')}${btn('▣ '+t('preview'),'screenCapture',s.id,'btn-small btn-soft')}${btn('⋯ '+t('actions'),'screenCommands',s.id,'btn-small btn-ghost')}</div></article>`).join('')}</div>`:empty('▣',t('noScreens'),t('noScreensDesc'),btn('↗ '+t('viewPlayer'),'playerOpen'))}`;
+}
+function renderMedia(){
+ const items=state.media.filter(m=>m.name.toLowerCase().includes(state.q.toLowerCase()));
+ return `${section(t('media'),'Archivos publicitarios organizados y reutilizables.',canEdit()?`${btn('⬆ '+t('upload'),'upload')}`:'')}<div class="toolbar"><input class="search" id="media-search" placeholder="Buscar archivos..." value="${attr(state.q)}" aria-label="Buscar contenido"><span class="caption">${items.length} archivos</span></div><div class="media-list">${items.length?items.map(m=>`<div class="item">${mediaThumb(m)}<div class="item-main"><span class="item-name">${esc(m.name)}</span><div class="item-meta">${esc(m.kind==='image'?'Imagen':'Video')} · ${size(m.bytes)} · ${esc(localDate(m.created_at))}</div></div><div class="item-actions"><button class="icon-action" data-act="mediaPreview" data-id="${m.id}" title="${t('preview')}">◉</button>${canEdit()?`<button class="icon-action" data-act="mediaDelete" data-id="${m.id}" title="${t('remove')}">✕</button>`:''}</div></div>`).join(''):empty('▧',t('noMedia'),t('noMediaDesc'),canEdit()?btn('＋ '+t('upload'),'upload'):'')}</div><input type="file" id="file-upload" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm" multiple hidden>`;
+}
+function renderPlaylists(){
+ return `${section(t('playlists'),'Prepara un borrador, revísalo y luego publícalo en las pantallas.',canEdit()?btn('＋ '+t('newList'),'listNew')+btn('◷ '+t('programs'),'navigate','programs','btn-outline'):'')}<div class="list-choice">${state.playlists.length?state.playlists.map(x=>`<button class="choice ${state.editorId===Number(x.id)?'active':''}" data-act="listOpen" data-id="${x.id}"><div class="row-between"><span class="choice-title">☷ ${esc(x.name)}</span><span class="pill">${x.items}</span></div><p class="choice-meta">${t('updated')}: ${esc(localDate(x.updated_at))} · R${x.revision}</p></button>`).join(''):empty('☷',t('noList'),t('noListDesc'),canEdit()?btn('＋ '+t('newList'),'listNew')+btn('◷ '+t('programs'),'navigate','programs','btn-outline'):'')}</div><div style="height:22px"></div><div id="playlist-board">${state.editorId?loading():''}</div>`;
+}
+function renderEditorView(){
+ const pl=state.editor;if(!pl)return loading();
+ const tabs=`<div class="mobile-editor-tabs"><button data-act="editorTab" data-id="list" class="${state.editorTab==='list'?'active':''}">☷ ${t('items')} (${state.editorItems.length})</button><button data-act="editorTab" data-id="library" class="${state.editorTab==='library'?'active':''}">▧ ${t('library')}</button></div>`;
+ const items=state.editorItems.map((it,i)=>{
+     const m=state.media.find(x=>x.id===it.id)||{id:it.id,name:it.name,mime:it.mime,kind:it.mime?.startsWith('video')?'video':'image'};
+     return `<article class="item" draggable="true" data-index="${i}" data-kind="play-item">${mediaThumb(m)}<div class="item-main"><span class="item-name">${esc(it.name||m.name)}</span><div class="item-meta">${esc(m.kind==='video'?'Video':'Imagen')} · ${it.schedule&&Object.keys(it.schedule).length?'⏰ Programado':'Sin horario específico'}</div></div><div class="item-actions"><input aria-label="Segundos de anuncio" class="duration" type="number" min="2" max="600" value="${it.duration||8}" data-duration="${i}" title="Segundos">${canEdit()?`<button class="icon-action" data-act="itemUp" data-id="${i}" title="Subir">↑</button><button class="icon-action" data-act="itemDown" data-id="${i}" title="Bajar">↓</button><button class="icon-action" data-act="itemOptions" data-id="${i}" title="Opciones">⋯</button>`:''}</div></article>`;
+ }).join('');
+ const library=state.media.map(m=>`<article class="item">${mediaThumb(m)}<div class="item-main"><span class="item-name">${esc(m.name)}</span><div class="item-meta">${esc(m.kind==='video'?'Video':'Imagen')} · ${size(m.bytes)}</div></div>${canEdit()?`<button class="btn btn-small btn-soft" data-act="itemAdd" data-id="${m.id}">＋ ${t('add')}</button>`:''}</article>`).join('');
+ return `<div class="editor-head"><div><h2 style="margin:0">${esc(pl.name)}</h2><span class="caption">${state.editorItems.length} elementos · Revisión ${pl.revision}</span></div><div class="section-actions">${canEdit()?`${btn('⧉ '+t('duplicate'),'listDuplicate',pl.id,'btn-small btn-ghost')}${btn('✓ '+t('save'),'listSave','','btn-small btn-soft')}${btn('↗ '+t('publish'),'listPublish','','btn-small')}`:''}</div></div><div class="section-actions" style="margin:0 0 11px"><a class="btn btn-ghost btn-small" href="/export.php?id=${Number(pl.id)}&amp;format=html">↓ HTML offline</a><a class="btn btn-ghost btn-small" href="/export.php?id=${Number(pl.id)}&amp;format=zip">↓ ZIP offline</a></div><p class="draft-tip">${state.editorDirty?'● Hay cambios sin guardar.':'✓ Borrador guardado.'} Publicar es una acción separada, para que no cambie la publicidad mientras editas.</p>${tabs}<div class="media-layout"><section class="editor-panel ${state.editorTab==='list'?'active':''}"><div class="editor-head"><h3>${t('items')}</h3><span class="caption">${state.editorItems.reduce((a,m)=>a+(Number(m.duration)||8),0)} seg / vuelta</span></div><div class="play-items">${items||empty('☷','Lista vacía','Agrega contenido desde la biblioteca.')}</div></section><section class="editor-panel library ${state.editorTab==='library'?'active':''}"><div class="editor-head"><h3>${t('library')}</h3>${canEdit()?btn('⬆ '+t('upload'),'upload','','btn-small btn-ghost'):''}</div><div class="media-list">${library||empty('▧',t('noMedia'),t('noMediaDesc'))}</div></section></div><input type="file" id="file-upload" accept="image/png,image/jpeg,image/webp,image/gif,video/mp4,video/webm" multiple hidden>`;
+}
+async function openEditor(id,fetch=true){
+ state.editorId=Number(id);if(fetch||!state.editor||Number(state.editor.id)!==Number(id)){
+   try{const r=await apiGet('playlist.get',{id});state.editor=r.playlist;state.editorItems=r.items.map(x=>({...x}));state.editorDirty=false;
+   }catch(e){toast(e.message,true);state.editorId=null;return;}
+ }
+ const board=$('#playlist-board');if(board)board.innerHTML=renderEditorView();
+ $('.choice.active')?.classList.remove('active');$(`.choice[data-id="${Number(id)}"]`)?.classList.add('active');
+}
+async function apiGet(action,query={}){const url='/api.php?action='+encodeURIComponent(action)+'&'+new URLSearchParams(query);const response=await fetch(url,{credentials:'same-origin'});const data=await response.json();if(!response.ok||!data.ok)throw Error(data.error||'Error de conexión');return data;}
+function renderLocations(){
+ return `${section(t('locations'),'Organiza los equipos por tienda, sede o ubicación.',canEdit()?btn('＋ '+t('newLocation'),'locationNew'):'')}<div class="list-choice">${state.locations.length?state.locations.map(l=>`<div class="location-card"><span class="emoji">⌖</span><h3>${esc(l.name)}</h3><p class="muted">${esc(l.address||'Sin dirección')}</p><span class="pill">${state.screens.filter(s=>String(s.location_id)===String(l.id)).length} ${t('screens')}</span></div>`).join(''):empty('⌖','Crea un local','Los locales ayudan a agrupar pantallas por establecimiento.',canEdit()?btn('＋ '+t('newLocation'),'locationNew'):'')}</div>`;
+}
+function renderGroups(){
+ return `${section(t('groups'),'Una pantalla puede pertenecer a un local y a un grupo de campaña.',canEdit()?btn('＋ '+t('newGroup'),'groupNew'):'')}<div class="list-choice">${state.groups.length?state.groups.map(g=>`<div class="location-card"><span class="emoji">◈</span><h3>${esc(g.name)}</h3><span class="pill">${state.screens.filter(s=>String(s.group_id)===String(g.id)).length} ${t('screens')}</span></div>`).join(''):empty('◈','Crea un grupo','Envía la misma campaña a varias pantallas.',canEdit()?btn('＋ '+t('newGroup'),'groupNew'):'')}</div>`;
+}
+function renderCatalog(){
+ return `${section('Inventario Pro 360','Conector seguro de solo lectura: importación comercial, precios públicos y creatividades.',isAdmin()?btn('＋ Nueva conexión','integrationNew'):'')}<div class="help-box">🔐 <b>No se conecta a la base de datos del inventario.</b> Recibe únicamente ID, nombre, presentación, precio público y promoción mediante HMAC. Nunca lee compras, costos, stock interno ni información fiscal.</div><div class="divider"></div><h3>Conexiones activas</h3><div class="list-choice">${state.integrations.length?state.integrations.map(c=>`<div class="location-card"><div class="row-between"><h3>${esc(c.name)}</h3><span class="pill ${c.enabled?'ok':'off'}">${c.enabled?'Activa':'Inactiva'}</span></div><p class="caption mono">ID ${esc(c.key_id)}</p><p class="caption">Última sincronización: ${localDate(c.last_sync_at)}</p>${isAdmin()?`<label class="checkbox-line"><input type="checkbox" data-integration-auto="${c.id}" ${Number(c.auto_publish)?'checked':''}> Publicar promociones automáticamente</label>`:''}</div>`).join(''):'<p class="muted">Todavía no hay conexiones. Genera una clave para tu exportador.</p>'}</div><div class="divider"></div><h3>Últimos productos comerciales</h3><div class="table-scroll"><table class="list-table"><thead><tr><th>Producto</th><th>Presentación</th><th>Precio público</th><th>Estado</th></tr></thead><tbody>${state.catalog.length?state.catalog.map(x=>`<tr><td><b>${esc(x.name)}</b><div class="caption mono">${esc(x.external_id)}</div></td><td>${esc(x.presentation)}</td><td>S/ ${Number(x.public_price).toFixed(2)}</td><td><span class="pill ${Number(x.promotional)?'ok':''}">${Number(x.promotional)?'Promoción':'Normal'}</span></td></tr>`).join(''):'<tr><td colspan="4" class="muted">Sin productos importados.</td></tr>'}</tbody></table></div>`;
+}
+function renderUsers(){
+ return `${section(t('users'),'Acceso por rol, invitaciones privadas y revocación de cuentas.',btn('＋ Invitar usuario','userInvite'))}<div class="panel table-scroll"><table class="list-table"><thead><tr><th>Nombre</th><th>Correo</th><th>Permiso</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>${state.users.map(u=>`<tr><td><b>${esc(u.name)}</b></td><td>${esc(u.email)}</td><td>${esc(u.role)}</td><td>${u.enabled?'<span class="pill ok">Activo</span>':'<span class="pill off">Suspendido</span>'}</td><td>${Number(u.id)!==Number(state.user.id)?`<button class="btn btn-small btn-ghost" data-act="userToggle" data-id="${u.id}">${u.enabled?'Suspender':'Activar'}</button> <button class="btn btn-small btn-outline" data-act="userResetLink" data-id="${u.id}">Restablecer clave</button>`:'Cuenta actual'}</td></tr>`).join('')}</tbody></table></div><p class="caption">Las invitaciones se muestran para copiar y compartir; el sistema no envía correos hasta que configures una pasarela de correo.</p>`;
+}
+function renderSettings(){
+ const c=state.settings||{},sto=c.storage||{driver:'local'};
+ return `${section(t('settings'),'Configuración general, conexiones de inicio de sesión y almacenamiento.')}<section class="panel release-panel"><div><b>Sector Sign · v${releaseVersion()}</b><p class="caption">${t('lastUpdate')}: ${esc(prettyReleaseDate(state.release?.released_at))}</p></div>${btn('↻ '+t('checkUpdate'),'versionCheck','','btn-small btn-outline')}</section>
+ <div class="two-col"><section class="panel"><h3>Tu empresa</h3><form id="org-form" class="form-stack"><label>Nombre del negocio<input class="field" name="name" value="${attr(c.organization?.name||'')}" required></label><label>Zona horaria<select class="field" name="timezone">${opt([['America/Lima','Perú · Lima'],['America/Bogota','Colombia · Bogotá'],['America/Mexico_City','México · Ciudad de México'],['Europe/Madrid','España · Madrid']],c.organization?.timezone)}</select></label><button class="btn" type="submit">${t('saveChanges')}</button></form><div class="divider"></div><h3>Acceso con Google y Microsoft</h3><p class="helper">Google: <b>${c.oauth?.google?'Configurado':'Pendiente de configurar'}</b><br>Microsoft: <b>${c.oauth?.microsoft?'Configurado':'Pendiente de configurar'}</b></p><p class="caption">Configura el acceso sin editar código. Registra las URI de redirección de tu dominio en Google Cloud y Microsoft Entra. Mantén los secretos fuera de capturas y chats.</p>
+ <div class="form-stack" style="margin:12px 0">
+ ${['google','microsoft'].map(provider=>`<form class="oauth-provider-form form-stack" data-provider="${provider}"><b>${provider==='google'?'Google':'Microsoft / Hotmail'}</b><label>Client ID<input class="field" name="client_id" placeholder="Client ID del proveedor"></label><label>Client Secret<input class="field" type="password" name="client_secret" placeholder="Guardar nuevo / conservar anterior"></label><button class="btn btn-small btn-outline" type="submit">Guardar ${provider}</button><small class="caption">Callback: ${esc(c.base_url||'https://TU-DOMINIO')}/oauth.php?provider=${provider}</small></form>`).join('')}
+ </div><div class="section-actions"><a class="btn btn-small btn-outline" href="/oauth.php?provider=google&mode=link">Vincular Google</a><a class="btn btn-small btn-outline" href="/oauth.php?provider=microsoft&mode=link">Vincular Microsoft</a></div></section>
+ <section class="panel"><h3>Almacenamiento de anuncios</h3><p class="helper">Local es más simple. S3 descarga los videos fuera de tu VPS, ideal cuando crece el tráfico y habilitas balanceo.</p><form id="storage-form" class="form-stack"><label>Destino de nuevas cargas<select class="field" name="driver" id="storage-driver">${opt([['local','VPS local'],['s3','Amazon S3 / almacenamiento S3 compatible'],['ftps','Servidor remoto FTPS (entrega por HTTPS)']],sto.driver)}</select></label><div id="s3-fields" style="display:${sto.driver==='s3'?'grid':'none'};gap:12px"><label>Endpoint HTTPS<input class="field" name="endpoint" placeholder="https://s3.us-east-1.amazonaws.com" value="${attr(sto.endpoint||'')}"></label><div class="form-grid"><label>Bucket<input class="field" name="bucket" value="${attr(sto.bucket||'')}"></label><label>Región<input class="field" name="region" value="${attr(sto.region||'us-east-1')}"></label></div><label>Access Key<input class="field" name="access_key" autocomplete="off"></label><label>Secret Key<input class="field" type="password" name="secret_key" autocomplete="new-password"></label><label>CDN HTTPS (opcional)<input class="field" name="cdn_url" placeholder="https://cdn.tudominio.com" value="${attr(sto.cdn_url||'')}"></label><p class="caption">Las claves se guardan únicamente en el archivo de configuración fuera del directorio público. Debes permitir CORS de tu dominio en el bucket para descargas offline del navegador.</p></div><div id="ftps-fields" style="display:${sto.driver==='ftps'?'grid':'none'};gap:12px"><label>Host FTPS<input class="field" name="host" value="${attr(sto.host||'')}" placeholder="ftp.servidor.com"></label><div class="form-grid"><label>Puerto<input class="field" name="port" value="${attr(sto.port||21)}" inputmode="numeric"></label><label>Carpeta remota<input class="field" name="directory" value="${attr(sto.directory||'/public_html')}" placeholder="/public_html"></label></div><label>URL pública HTTPS<input class="field" name="public_base_url" value="${attr(sto.public_base_url||'')}" placeholder="https://media.ejemplo.com"></label><label>Usuario FTPS<input class="field" name="username" autocomplete="off" placeholder="Deja vacío para conservar el anterior"></label><label>Contraseña FTPS<input class="field" type="password" name="password" autocomplete="new-password"></label><p class="caption">Para no sobrecargar tu VPS, la carpeta remota tiene que servir los archivos por HTTPS. Se recomienda FTPS, no FTP sin cifrar.</p></div><button type="submit" class="btn">Guardar almacenamiento</button></form></section></div><section class="panel" style="margin-top:18px"><h3>Cambiar mi contraseña</h3><form id="password-form" class="form-grid"><label>Contraseña actual<input class="field" type="password" name="old_password" required></label><label>Nueva contraseña (mínimo 12)<input class="field" type="password" name="new_password" minlength="12" required></label><button type="submit" class="btn">Cambiar contraseña</button></form></section>`;
+}
+function renderBackup(){
+ return `${section(t('backup'),'Protege tus campañas y los archivos ante averías o migraciones.')}
+ <div class="hero" style="background:linear-gradient(110deg,#123057,#1c68b9)"><div><h2>Respaldo externo automatizado</h2><p>Tu VPS puede guardar copias en Google Drive, FTP/FTPS o AWS S3 mediante los trabajos Cron de aaPanel. Haz copias de la base MySQL y de las carpetas multimedia y privada.</p></div><span style="font-size:50px;opacity:.6">⛁</span></div>
+ <div class="two-col"><section class="panel"><h3>1. Configura aaPanel</h3><p>En <b>Cron</b> crea dos tareas diarias: <b>Backup Database</b> para tu MySQL y <b>Backup Website</b> para las carpetas de Sector Sign. Selecciona Google Drive, FTP Storage o Amazon S3 como destino.</p><p class="helper">AaPanel puede instalar complementos de almacenamiento desde su App Store. Activa cifrado y retención, y verifica cada restauración.</p><a target="_blank" rel="noopener" href="https://www.aapanel.com/docs/Function/Cron.html" class="btn btn-outline">Guía oficial aaPanel ↗</a></section><section class="panel"><h3>2. Copias locales cifradas</h3><p>La entrega también incluye <code>tools/backup.php</code>, que prepara un archivo cifrado con MySQL y multimedia mediante PHP CLI. Puede enviarlo por FTPS o dejarlo listo para un destino externo.</p><p class="helper">Para restaurar necesitas la clave <code>backup_key</code> del archivo privado, que debes guardar aparte del VPS.</p><p class="notice">El respaldo no está activado automáticamente: para enviarlo a Google Drive debes configurar la cuenta en aaPanel.</p><form id="backup-policy-form" class="form-stack"><label>Conservar copias locales (1-30)<input class="field" name="keep" type="number" min="1" max="30" value="${Number(state.backupInfo?.keep)||7}"></label><button class="btn btn-small" type="submit">Guardar retención</button></form></section></div><div class="divider"></div><h3>Registro de acciones</h3><div class="panel table-scroll"><table class="list-table"><thead><tr><th>Evento</th><th>Actor</th><th>Fecha</th></tr></thead><tbody>${(state.audits||[]).slice(0,30).map(a=>`<tr><td>${esc(a.action)}</td><td>${esc(a.actor)}</td><td>${localDate(a.created_at)}</td></tr>`).join('')||'<tr><td colspan="3">Sin actividad</td></tr>'}</tbody></table></div>`;
+}
+function renderDoctor(){
+ const d=state.diagnostics||{};const tests=d.tests||[];const passed=tests.filter(x=>x.pass).length;
+ return `${section(t('doctor'),'Comprueba si el servidor está listo para reproducir y distribuir publicidad.',btn('↻ Repetir diagnóstico','refresh'))}
+ <div class="panel"><div class="row-between"><h3>Estado del servidor</h3><span class="pill ${passed===tests.length?'ok':'warn'}">${passed}/${tests.length} verificaciones</span></div>
+ <div class="doctor-tests">${tests.map(x=>`<div class="doctor-test"><span class="doctor-icon ${x.pass?'pass':'fail'}">${x.pass?'✓':'!'}</span><div><b>${esc(x.label)}</b><div class="caption">${esc(x.value)}</div></div></div>`).join('')}</div></div>
+ <div class="two-col"><section class="panel"><h3>PHP y almacenamiento</h3><p><b>PHP para archivos:</b> ${esc(d.php_upload_max||'desconocido')} / <b>POST:</b> ${esc(d.php_post_max||'desconocido')}</p><p><b>Destino:</b> ${esc(d.storage_driver||'local')}</p><p><b>Espacio libre:</b> ${d.disk_free_bytes==null?'no disponible':size(d.disk_free_bytes)}</p></section><section class="panel"><h3>Versión y soporte</h3><p><b>Sector Sign:</b> ${esc(d.version||appBuild.version)}</p><p><b>Dirección:</b> ${esc(d.base_url||'')}</p><p class="caption">Si falla alguna verificación, revisa las extensiones de PHP en aaPanel y el archivo de configuración privado.</p></section></div>
+ <div class="help-box"><b>Checklist antes de producción:</b> instala el sistema en un subdominio nuevo, utiliza HTTPS, prueba una pantalla real, confirma que los anuncios siguen offline y comprueba que puedes restaurar un respaldo. El diagnóstico no reemplaza esas pruebas.</div>`;
+}
+function showModal(title,contents,onSave=null,buttonLabel='Guardar'){
+ const dialog=$('#modal');$('#modal-inner').innerHTML=`<div class="modal-pad"><div class="modal-top"><h2>${esc(title)}</h2><button class="modal-close" aria-label="Cerrar" type="button" data-act="modalClose">✕</button></div>${contents}${onSave?`<div class="modal-actions"><button class="btn btn-ghost" data-act="modalClose" type="button">${t('cancel')}</button><button class="btn" type="button" id="modal-save">${esc(buttonLabel)}</button></div>`:''}</div>`;
+ if(!dialog.open)dialog.showModal();if(onSave)$('#modal-save').addEventListener('click',async()=>{const b=$('#modal-save');if(!b||b.disabled)return;b.disabled=true;try{await onSave();}finally{if(b.isConnected)b.disabled=false;}});
+}
+function closeModal(){if($('#modal').open)$('#modal').close();$('#modal').classList.remove('program-dialog');}
+function formVals(selector='#modal-inner'){return Object.fromEntries(new FormData($(selector).querySelector('form')));}
+function handleError(e){toast(e.message||String(e),true)}
+function promptCreate(type){
+ const group=type==='groups',location=type==='locations';
+ const label=group?t('newGroup'):t('newLocation');
+ showModal(label,`<form class="form-stack"><label>Nombre<input name="name" class="field" required maxlength="120" autofocus></label>${location?'<label>Dirección (opcional)<input name="address" class="field" maxlength="255"></label>':''}</form>`,async()=>{
+   const data=formVals();if(!data.name?.trim())return toast('Escribe un nombre',true);
+   try{await api(group?'groups.create':'locations.create',data);closeModal();await navigate(type);toast('Creado correctamente');}catch(e){handleError(e);}
+ });
+}
+function uploadWithProgress(file,onProgress){return new Promise((resolve,reject)=>{
+ const req=new XMLHttpRequest();req.open('POST','/api.php?action=media.upload');req.setRequestHeader('X-CSRF-Token',window.SS_CSRF||'');
+ req.upload.onprogress=e=>{if(e.lengthComputable)onProgress(Math.floor(e.loaded/e.total*100));};
+ req.onerror=()=>reject(Error('Error de red durante la subida.'));
+ req.onload=()=>{let data;try{data=JSON.parse(req.responseText);}catch{data={error:'Respuesta inválida'};}if(req.status<200||req.status>=300||!data.ok)reject(Error(data.error||'Error de subida'));else resolve(data);};
+ const fd=new FormData();fd.append('file',file);req.send(fd);
+});}
+async function uploadFiles(files){
+ if(!files.length)return;
+ let count=0;for(const file of files){
+  if(!/^(image\/(jpeg|png|webp|gif)|video\/(mp4|webm))$/.test(file.type)){toast('Archivo no permitido: '+file.name,true);continue;}
+  let indicator=$('#upload-progress');if(!indicator){indicator=document.createElement('div');indicator.id='upload-progress';indicator.className='upload-progress';document.body.appendChild(indicator);}
+  indicator.textContent='Subiendo '+file.name+' · 0%';
+  try{await uploadWithProgress(file,p=>{indicator.textContent='Subiendo '+file.name+' · '+p+'%';});count++;}catch(e){toast(file.name+': '+e.message,true);}
+  finally{indicator.remove();}
+ }
+ if(count){toast(count+' archivos guardados');const previousId=state.editorId;await navigate(state.page);if(previousId&&state.page==='playlists')await openEditor(previousId,false);}
+}
+function screenModal(){
+ showModal('Vincular pantalla',`<div class="notice">1. Abre el <a href="/player.php" target="_blank" rel="noopener">reproductor</a> desde la TV/tablet.<br>2. Introduce aquí el código de 8 dígitos que aparece allí.<br>3. Asigna su local y grupo.</div><form class="form-stack" style="margin-top:15px"><label>Código temporal<input name="code" class="field mono" inputmode="numeric" pattern="[0-9]{8}" maxlength="8" placeholder="12345678" required></label><label>Nombre de pantalla<input class="field" name="name" placeholder="Vitrina principal" required></label><div class="form-grid"><label>Local<select class="field" name="location_id"><option value="">Sin local</option>${opt(state.locations.map(x=>[x.id,x.name]))}</select></label><label>Grupo<select class="field" name="group_id"><option value="">Sin grupo</option>${opt(state.groups.map(x=>[x.id,x.name]))}</select></label></div></form>`,async()=>{
+  const data=formVals();try{await api('screens.pair',data);closeModal();await navigate('screens');toast('Pantalla vinculada');}catch(e){handleError(e)}
+ },'Vincular ahora');
+}
+function screenEditModal(s){showModal('Configurar pantalla',`<form class="form-stack"><label>Nombre<input name="name" class="field" value="${attr(s.name)}" required></label><div class="form-grid"><label>Local<select name="location_id" class="field"><option value="">Sin local</option>${opt(state.locations.map(x=>[x.id,x.name]),s.location_id)}</select></label><label>Grupo<select name="group_id" class="field"><option value="">Sin grupo</option>${opt(state.groups.map(x=>[x.id,x.name]),s.group_id)}</select></label></div><label>Orientación<select name="orientation" class="field">${opt([['landscape','Horizontal 16:9'],['portrait','Vertical 9:16']],s.orientation)}</select></label><p class="caption">ID: <code>${esc(s.id)}</code><br>Último contacto: ${esc(localDate(s.last_seen_at))}</p></form>`,async()=>{
+ try{await api('screens.update',{...formVals(),id:s.id});closeModal();await navigate('screens');toast('Pantalla actualizada');}catch(e){handleError(e);}
+ });}
+function screenCommandsModal(s){
+ showModal('Control remoto · '+s.name,`<p class="helper">Las órdenes se entregan cuando el reproductor vuelva a contactar el servidor. Reiniciar la app no reinicia el Android o TV.</p><div class="grid" style="grid-template-columns:1fr 1fr">${['pause','resume','reload','capture'].map(x=>`<button class="btn btn-outline" data-act="sendCommand" data-id="${attr(s.id)}" data-cmd="${x}">${({pause:'⏸ Pausar',resume:'▶ Reanudar',reload:'↻ Recargar app',capture:'▣ Captura'})[x]}</button>`).join('')}</div><div class="divider"></div><button class="btn btn-danger" data-act="screenUnpair" data-id="${attr(s.id)}">Desvincular equipo</button>`);
+}
+function previewModal(m){const url='/media.php?id='+m.id;showModal(t('preview')+' · '+m.name,`<div style="text-align:center">${m.kind==='video'?`<video class="preview-modal" controls autoplay playsinline src="${url}"></video>`:`<img class="preview-modal" src="${url}" alt="${attr(m.name)}">`}</div><p class="caption">${esc(m.name)} · ${size(m.bytes)}</p>`)}
+function itemOptions(index){
+ const it=state.editorItems[index];if(!it)return;
+ const sc=it.schedule||{};
+ showModal('Configurar anuncio',`<form class="form-stack"><div class="notice">${esc(it.name)} · posición ${index+1}</div><div class="form-grid"><label>Segundos<input class="field" name="duration" type="number" min="2" max="600" value="${it.duration||8}"></label><label>Encuadre<select class="field" name="fit">${opt([['contain','Completo (sin recortar)'],['cover','Llenar pantalla']],it.fit)}</select></label><label>Transición<select class="field" name="transition">${opt([['fade','Fundido'],['slide','Deslizar'],['none','Ninguna']],it.transition)}</select></label></div><fieldset class="fieldset"><legend>Programación opcional</legend><div class="form-grid"><label>Desde la fecha<input class="field" type="date" name="from" value="${attr(sc.from||'')}"></label><label>Hasta la fecha<input class="field" type="date" name="until" value="${attr(sc.until||'')}"></label><label>Hora de inicio<input class="field" type="time" name="start" value="${attr(sc.start||'')}"></label><label>Hora final<input class="field" type="time" name="end" value="${attr(sc.end||'')}"></label></div><div class="scrollrow" style="margin-top:13px">${['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'].map((d,i)=>`<label class="checkbox-line chip"><input type="checkbox" name="day${i}" ${sc.days?.includes(i)?'checked':''}>${d}</label>`).join('')}</div><p class="caption">Sin día seleccionado: todos los días. Horarios que cruzan medianoche están permitidos.</p></fieldset></form><div class="section-actions" style="margin-top:15px"><button class="btn btn-ghost" data-act="itemDuplicate" data-id="${index}">⧉ ${t('duplicate')}</button><button class="btn btn-danger" data-act="itemDelete" data-id="${index}">✕ ${t('remove')}</button></div>`,()=>{
+  const p=formVals();const f=$('#modal-inner form');const days=[0,1,2,3,4,5,6].filter(i=>f.elements['day'+i].checked);
+  const schedule={};for(const v of ['from','until','start','end'])if(p[v])schedule[v]=p[v];if(days.length)schedule.days=days;
+  Object.assign(it,{duration:Math.max(2,Math.min(600,Number(p.duration)||8)),fit:p.fit,transition:p.transition,schedule});state.editorDirty=true;closeModal();refreshEditor();
+ });
+}
+function refreshEditor(){if($('#playlist-board'))$('#playlist-board').innerHTML=renderEditorView();}
+function moveItem(from,to){if(to<0||to>=state.editorItems.length)return;let it=state.editorItems.splice(from,1)[0];state.editorItems.splice(to,0,it);state.editorDirty=true;refreshEditor();}
+function publishModal(){
+ if(state.editorDirty)return toast('Primero guarda los cambios del borrador',true);
+ if(!state.editorItems.length)return toast('La lista está vacía',true);
+ const s=state.screens||[];
+ showModal('Publicar · '+state.editor.name,`${s.length?`<p class="helper">Selecciona una o varias pantallas. Se publica una versión inmutable; si el equipo está offline, la recibirá cuando vuelva a conectarse.</p><div class="scrollrow" style="margin-bottom:11px"><button class="chip" data-act="screensSelectAll">Todas</button><button class="chip" data-act="screensSelectNone">Ninguna</button>${[...new Set(s.map(x=>x.location_name).filter(Boolean))].map(x=>`<button class="chip" data-act="screensSelectLocation" data-id="${attr(x)}">⌖ ${esc(x)}</button>`).join('')}${[...new Set(s.map(x=>x.group_name).filter(Boolean))].map(x=>`<button class="chip" data-act="screensSelectGroup" data-id="${attr(x)}">◈ ${esc(x)}</button>`).join('')}</div><div style="max-height:310px;overflow:auto" id="publish-screens">${s.map(x=>`<label class="checkbox-line item" style="margin-bottom:7px"><input type="checkbox" name="targets" value="${attr(x.id)}" checked><div class="spacer"><b>${esc(x.name)}</b><div class="caption">${esc(x.location_name||'Sin local')} · ${esc(x.group_name||'Sin grupo')}</div></div>${screenStatus(x)}</label>`).join('')}</div>`:empty('▣',t('noScreens'),t('noScreensDesc'),btn(t('viewPlayer'),'playerOpen'))}`,s.length?async()=>{
+   const ids=Array.from($('#publish-screens').querySelectorAll('input:checked')).map(x=>x.value);
+   if(ids.length===0)return toast('Selecciona al menos una pantalla',true);
+   try{const r=await api('playlist.publish',{id:state.editor.id,screens:ids});closeModal();toast('Publicación v'+r.version+' enviada a '+r.assigned+' pantallas');await navigate('playlists');}catch(e){handleError(e);}
+ }:null,'Publicar ahora');
+}
+function createIntegrationModal(){
+ showModal('Nueva integración con Inventario Pro 360',`<p class="helper">Se generará un identificador y una clave secreta de un solo uso. El exportador del inventario usa una firma HMAC para publicar precios públicos.</p><form class="form-stack"><label>Nombre de la conexión<input class="field" name="name" required placeholder="Inventario Pro 360 — Tienda"></label></form>`,async()=>{
+ const name=formVals().name;try{const r=await api('integrations.create',{name});showModal('Conexión creada',`<div class="notice">Copia estas credenciales ahora. La clave secreta no volverá a mostrarse.</div><div class="form-stack" style="margin-top:13px"><label>Key ID<input class="field mono" readonly value="${attr(r.key_id)}"></label><label>Secret<input class="field mono" readonly value="${attr(r.secret)}"></label></div><button class="btn" style="margin-top:17px" data-act="copyCreds" data-cred="${attr(r.key_id+':'+r.secret)}">Copiar ambas claves</button>`);}catch(e){handleError(e)}
+ });
+}
+function inviteModal(){showModal('Invitar usuario',`<form class="form-stack"><label>Correo del trabajador<input class="field" type="email" name="email" required></label><label>Permiso<select class="field" name="role">${opt([['viewer','Consulta'],['editor','Editor'],['admin','Administrador']])}</select></label></form>`,async()=>{try{const r=await api('users.invite',formVals());showModal('Enlace de invitación',`<p class="notice">Enlace privado válido por 48 horas. No se envió ningún correo automáticamente.</p><input id="invite-link" class="field mono" readonly value="${attr(r.invite_url)}"><button style="margin-top:14px" data-act="copyInvite" class="btn">Copiar invitación</button>`);}catch(e){handleError(e)}});}
+function versionInfo(){
+ const release=state.release||appBuild;
+ const updates=(release.changes||[]).slice(0,12).map(s=>`<li>${esc(s)}</li>`).join('');
+ showModal(t('version')+' · Sector Sign',`<div class="release-info"><div class="version-big">v${esc(release.version||'?')}</div><p class="caption">${t('lastUpdate')}: ${esc(prettyReleaseDate(release.released_at))}</p><p><b>${t('releaseNotes')}</b></p><ul>${updates}</ul><p class="helper">Versión cargada en este dispositivo: v${esc(appBuild.version)}. El servidor puede tener una versión nueva si aún no recargaste el panel.</p><div class="section-actions">${btn('↻ '+t('checkUpdate'),'versionCheck','','btn-outline btn-small')}${state.updateAvailable?btn('⬆ Recargar panel','reloadNow','','btn-small'):''}</div></div>`);
+}
+let livePollTimer=null,livePollBusy=false,liveFailures=0;
+function scheduleLivePoll(delayMs=8000){
+ clearTimeout(livePollTimer);
+ if(!state.user)return;
+ livePollTimer=setTimeout(pollLive,delayMs);
+}
+function paintLiveStatus(){
+ const node=$('#live-indicator');if(node){node.textContent=liveIndicator();node.className='live-indicator '+state.liveState;}
+ const badge=$('.version-chip');if(badge)badge.textContent='v'+(state.release?.version||appBuild.version);
+}
+async function pollLive(){
+ if(!state.user)return;
+ if(livePollBusy){scheduleLivePoll(2500);return;}
+ if(document.visibilityState==='hidden'){scheduleLivePoll(16000);return;}
+ livePollBusy=true;
+ try{
+  const v=await api('system.release',undefined,'GET');
+  state.release=v.release||appBuild;
+  state.updateAvailable=state.release.version!==appBuild.version;
+  if(state.page==='screens'||state.page==='overview'){
+   const r=await api('screens.list',undefined,'GET');
+   const previousIds=state.screens.map(x=>x.id).join(',');
+   state.screens=r.items||[];
+   if(state.page==='screens'){
+    if(previousIds!==state.screens.map(x=>x.id).join(',')&&!$('#modal')?.open&&!$('#screen-search:focus'))renderPage();
+    else state.screens.forEach(s=>{
+     const card=$$( '[data-live-screen]' ).find(x=>x.dataset.liveScreen===s.id);
+     if(!card)return;const deviceEl=card.querySelector('[data-live-device]');if(deviceEl)deviceEl.innerHTML=deviceSummary(s);
+     const status=card.querySelector('[data-live-status]');if(status)status.innerHTML=screenStatus(s);
+     const versions=card.querySelector('[data-live-versions]');if(versions)versions.textContent=`${t('assigned')}: v${s.assigned_version??'—'} · ${t('applied')}: v${s.applied_version??'—'}`;
+     const last=card.querySelector('[data-live-contact]');if(last)last.textContent=`◷ ${t('lastUpdate')}: ${localDate(s.last_seen_at)}`;
+    });
+   }else{
+    const d=await api('dashboard',undefined,'GET');state.dashboard=d;
+    const values={screens:d.stats?.screens??0,online:d.stats?.online??0,media:d.stats?.media??0,playlists:d.stats?.playlists??0};
+    for(const key of Object.keys(values)){const node=$(`[data-live-stat="${key}"] b`);if(node)node.textContent=values[key];}
+    const items=$$('.activity-row .pill');items.forEach((node,i)=>{if(state.screens[i])node.outerHTML=screenStatus(state.screens[i]);});
+   }
+  }
+  state.lastSync=new Date().toISOString();state.liveState='online';liveFailures=0;paintLiveStatus();
+ }catch(error){
+  liveFailures=Math.min(5,liveFailures+1);state.liveState='offline';paintLiveStatus();
+ }finally{
+  livePollBusy=false;
+  scheduleLivePoll(liveFailures?Math.min(60000,8000*2**liveFailures):8000+Math.floor(Math.random()*1000));
+ }
+}
+window.addEventListener('online',()=>{if(state.user)scheduleLivePoll(500)});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&state.user)scheduleLivePoll(500)});
+async function handleAction(action,id,element){
+ try{if(action.startsWith('program')){await programAction(action,id);return;}if(action==='deviceDetails'){deviceDetails(id);return;}switch(action){
+  case 'navigate':await navigate(id);break;
+  case 'versionInfo':versionInfo();break;
+  case 'versionCheck':await pollLive();versionInfo();toast(state.updateAvailable?t('newRelease'):t('serverUpdate'));break;
+  case 'reloadNow':location.reload();break;
+  case 'theme':state.theme=state.theme==='light'?'dark':'light';localStorage.setItem('ss-theme',state.theme);document.documentElement.dataset.theme=state.theme;renderPage();break;
+  case 'refresh':await navigate(state.page);break;
+  case 'logout':await api('auth.logout',{});state.user=null;clearTimeout(livePollTimer);renderLogin();break;
+  case 'playerOpen':window.open('/player.php','_blank','noopener');break;
+  case 'modalClose':closeModal();break;
+  case 'upload':$('#file-upload')?.click();break;
+  case 'screenPair':await Promise.all(['screens.list','locations.list','groups.list'].map(async a=>{const r=await api(a,undefined,'GET');state[a.split('.')[0]]=r.items;}));screenModal();break;
+  case 'screenEdit':screenEditModal(state.screens.find(s=>s.id===id));break;
+  case 'screenCommands':screenCommandsModal(state.screens.find(s=>s.id===id));break;
+  case 'screenCapture':await api('screens.command',{id,command:'capture'});toast('Captura solicitada: aparecerá cuando el reproductor la entregue');break;
+  case 'sendCommand':await api('screens.command',{id,command:element.dataset.cmd});toast('Orden enviada al dispositivo');break;
+  case 'screenUnpair':if(confirm('¿Desvincular la pantalla? Tendrás que registrarla de nuevo.')){await api('screens.unpair',{id});closeModal();await navigate('screens');}break;
+  case 'mediaPreview':previewModal(state.media.find(m=>m.id===id));break;
+  case 'mediaDelete':if(confirm('¿Eliminar este archivo de la biblioteca?')){await api('media.delete',{id});await navigate('media');toast('Archivo archivado');}break;
+  case 'listNew':showModal('Nueva lista',`<form class="form-stack"><label>Nombre<input name="name" class="field" required maxlength="160" placeholder="Promociones de fin de semana"></label></form>`,async()=>{try{let r=await api('playlists.create',formVals());closeModal();await navigate('playlists');await openEditor(r.id,true);}catch(e){handleError(e)}});break;
+  case 'listOpen':await openEditor(id,true);break;
+  case 'itemAdd':{
+   let m=state.media.find(x=>x.id===id);if(!m)return;
+   state.editorItems.push({id:m.id,name:m.name,mime:m.mime,sha256:m.sha256,bytes:Number(m.bytes),duration:8,transition:'fade',fit:'contain',schedule:{}});state.editorDirty=true;state.editorTab='list';refreshEditor();break;
+  }
+  case 'itemUp':moveItem(Number(id),Number(id)-1);break;
+  case 'itemDown':moveItem(Number(id),Number(id)+1);break;
+  case 'itemOptions':itemOptions(Number(id));break;
+  case 'itemDuplicate':{let it=state.editorItems[Number(id)];state.editorItems.splice(Number(id)+1,0,structuredClone(it));state.editorDirty=true;closeModal();refreshEditor();break;}
+  case 'itemDelete':state.editorItems.splice(Number(id),1);state.editorDirty=true;closeModal();refreshEditor();break;
+  case 'editorTab':state.editorTab=id;refreshEditor();break;
+  case 'listSave':{const r=await api('playlist.save',{id:state.editor.id,revision:Number(state.editor.revision),items:state.editorItems});state.editor.revision=r.revision;state.editorDirty=false;toast('Borrador guardado');await navigate('playlists');break;}
+  case 'listPublish':publishModal();break;
+  case 'listDuplicate':{const r=await api('playlists.duplicate',{id:Number(id)});state.editorId=null;state.editor=null;await navigate('playlists');await openEditor(r.id,true);toast('Lista duplicada');break;}
+  case 'locationNew':promptCreate('locations');break;
+  case 'groupNew':promptCreate('groups');break;
+  case 'integrationNew':createIntegrationModal();break;
+  case 'userInvite':inviteModal();break;
+  case 'userResetLink':{const r=await api('users.reset_link',{id:Number(id)});showModal('Recuperación segura',`<div class="notice">Vence en 60 minutos y funciona una sola vez. Comparte solamente por un canal privado.</div><input class="field mono" id="reset-link" readonly value="${attr(r.reset_url)}"><button data-act="copyReset" class="btn btn-small" style="margin-top:12px">Copiar enlace</button>`);break;}
+  case 'copyReset':await navigator.clipboard.writeText($('#reset-link').value);toast('Enlace copiado');break;
+  case 'userToggle':{
+   const u=state.users.find(x=>String(x.id)===String(id));if(!u)return;
+   if(confirm((u.enabled?'¿Suspender ':'¿Activar ')+u.email+'?')){await api('users.toggle',{id,enabled:!Number(u.enabled)});await navigate('users');}break;
+  }
+  case 'screensSelectLocation':$$('#publish-screens input[type="checkbox"]').forEach(x=>{const screen=state.screens.find(s=>s.id===x.value);x.checked=screen?.location_name===id;});break;
+  case 'screensSelectGroup':$$('#publish-screens input[type="checkbox"]').forEach(x=>{const screen=state.screens.find(s=>s.id===x.value);x.checked=screen?.group_name===id;});break;
+  case 'screensSelectAll':$$('#publish-screens input[type="checkbox"]').forEach(x=>x.checked=true);break;
+  case 'screensSelectNone':$$('#publish-screens input[type="checkbox"]').forEach(x=>x.checked=false);break;
+  case 'copyCreds':await navigator.clipboard.writeText(element.dataset.cred);toast('Credenciales copiadas');break;
+  case 'copyInvite':await navigator.clipboard.writeText($('#invite-link').value);toast('Enlace copiado');break;
+  default:break;
+ }}catch(e){handleError(e)}
+}
+const $$=(query,root=document)=>Array.from(root.querySelectorAll(query));
+document.addEventListener('click',e=>{const b=e.target.closest('[data-act]');if(!b)return;e.preventDefault();handleAction(b.dataset.act,b.dataset.id||'',b);});
+document.addEventListener('change',async e=>{
+ const el=e.target;
+ if(el.id==='language'){state.lang=el.value;localStorage.setItem('ss-lang',state.lang);document.documentElement.lang=state.lang;renderPage();return;}
+ if(el.id==='storage-driver'){$('#s3-fields').style.display=el.value==='s3'?'grid':'none';$('#ftps-fields').style.display=el.value==='ftps'?'grid':'none';return;}
+ if(el.type==='file'&&el.id==='file-upload'){await uploadFiles(Array.from(el.files));return;}
+ if(el.dataset.duration!==undefined){let i=Number(el.dataset.duration),it=state.editorItems[i];if(it){it.duration=Math.max(2,Math.min(600,Number(el.value)||8));state.editorDirty=true;refreshEditor();}return;}
+ if(el.dataset.integrationAuto){try{await api('integrations.update',{id:el.dataset.integrationAuto,enabled:true,auto_publish:el.checked});toast('Integración actualizada');}catch(ex){handleError(ex)}return;}
+});
+document.addEventListener('submit',async e=>{
+ if(!['org-form','storage-form','password-form','backup-policy-form'].includes(e.target.id)&&!e.target.classList.contains('oauth-provider-form'))return;
+ e.preventDefault();const id=e.target.id;const values=Object.fromEntries(new FormData(e.target));
+ try{
+   if(e.target.classList.contains('oauth-provider-form')){values.provider=e.target.dataset.provider;await api('settings.oauth',values);}
+   if(id==='backup-policy-form')await api('settings.backup_policy',values);
+   if(id==='org-form')await api('settings.organization',values);
+   if(id==='storage-form')await api('settings.storage',values);
+   if(id==='password-form')await api('users.password',values);
+   toast('Cambios guardados');await navigate(id==='backup-policy-form'?'backup':'settings');
+ }catch(ex){handleError(ex);}
+});
+document.addEventListener('dragstart',e=>{const el=e.target.closest('[data-kind="play-item"]');if(el)e.dataTransfer.setData('text/plain',el.dataset.index);});
+document.addEventListener('dragover',e=>{if(e.target.closest('[data-kind="play-item"]'))e.preventDefault();});
+document.addEventListener('drop',e=>{const el=e.target.closest('[data-kind="play-item"]');if(!el)return;e.preventDefault();const i=Number(e.dataTransfer.getData('text/plain'));const j=Number(el.dataset.index);if(Number.isInteger(i)&&Number.isInteger(j))moveItem(i,j);});
+bootstrap();

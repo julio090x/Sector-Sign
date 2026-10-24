@@ -1,0 +1,1 @@
+{"extends":"../../tsconfig.json","compilerOptions":{"outDir":"../../.angular-out/centro"},"files":["src/main.ts"],"include":["src/**/*.ts","../../libs/compartido/src/**/*.ts"]}

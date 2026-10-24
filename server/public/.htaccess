@@ -1,0 +1,7 @@
+Options -Indexes
+<IfModule mod_rewrite.c>
+RewriteEngine On
+</IfModule>
+<FilesMatch "^(config|\.env|\.htaccess|\.user\.ini)$">
+Require all denied
+</FilesMatch>

@@ -1,0 +1,21 @@
+# Checklist antes de usar Sector Sign con clientes
+
+- [ ] Dominio propio exclusivo para Sector Sign y certificado HTTPS válido.
+- [ ] aaPanel, PHP 8.2+, MySQL y extensiones necesarias; `php tools/doctor.php` sin fallos importantes.
+- [ ] Raíz del sitio en `server/public`, nunca en `server` (no debe poder abrirse `private/config.php` desde Internet).
+- [ ] Usuario MySQL exclusivo de Sector Sign, sin privilegios sobre bases de Inventario Pro.
+- [ ] Contraseña fuerte, recuperación segura y permisos por usuario probados.
+- [ ] MySQL QA transaccional `php tests/mysql-smoke.php --run` ejecutado en DB **_qa**.
+- [ ] Una imagen y un MP4 subidos y reproducidos completamente en un dispositivo real.
+- [ ] Vinculación mediante código por un solo uso y revocación de pantalla probadas.
+- [ ] Campaña publicada, descargada y confirmada por `applied_version`.
+- [ ] Pantalla reproduciendo sin internet WAN durante 10 minutos; reiniciar equipo y verificar caché.
+- [ ] Confirmar comportamiento tras corte de corriente y posibles restricciones de ejecución de fondo.
+- [ ] 0.3 → 0.4: backup y migración probados, sin sobrescribir `private/config.php`, `storage` o datos activos.
+- [ ] Almacenamiento remoto validado con archivo real, lectura desde el dispositivo y permiso CDN.
+- [ ] Copia cifrada verificada y copia externa por Cron configurada para **base + private + media**.
+- [ ] Restauración en instalación nueva probada al menos una vez, y clave fuera del VPS.
+- [ ] Integración de Inventario Pro revisada con el código de su versión instalada; sin costos, stock interno ni datos fiscales.
+- [ ] Google/Microsoft OAuth probado si se configura, o dejarlo desactivado.
+- [ ] Balanceo: solo activar después de añadir segundo nodo, certificar rutas y sesiones compartidas.
+- [ ] Revisar uso de RAM, CPU, disco, ancho de banda, errores 4xx/5xx y antigüedad de capturas/heartbeats.

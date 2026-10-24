@@ -1,0 +1,123 @@
+{
+  "$schema": "./node_modules/@angular/cli/lib/config/schema.json",
+  "version": 1,
+  "newProjectRoot": "apps",
+  "projects": {
+    "centro": {
+      "projectType": "application",
+      "root": "apps/centro",
+      "sourceRoot": "apps/centro/src",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "outputPath": "dist/centro",
+            "index": "apps/centro/src/index.html",
+            "browser": "apps/centro/src/main.ts",
+            "polyfills": [],
+            "tsConfig": "apps/centro/tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "legacy-assets/assets",
+                "output": "assets/"
+              },
+              {
+                "glob": "**/*",
+                "input": "legacy-assets/icons",
+                "output": "icons/"
+              }
+            ],
+            "styles": [
+              "legacy-assets/assets/app.css"
+            ],
+            "scripts": []
+          },
+          "configurations": {
+            "production": {
+              "optimization": true,
+              "outputHashing": "all",
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "1mb",
+                  "maximumError": "3mb"
+                }
+              ]
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "options": {
+            "buildTarget": "centro:build"
+          },
+          "configurations": {
+            "development": {
+              "buildTarget": "centro:build"
+            }
+          }
+        }
+      }
+    },
+    "receptor": {
+      "projectType": "application",
+      "root": "apps/receptor",
+      "sourceRoot": "apps/receptor/src",
+      "architect": {
+        "build": {
+          "builder": "@angular/build:application",
+          "options": {
+            "outputPath": "dist/receptor",
+            "index": "apps/receptor/src/index.html",
+            "browser": "apps/receptor/src/main.ts",
+            "polyfills": [],
+            "tsConfig": "apps/receptor/tsconfig.app.json",
+            "assets": [
+              {
+                "glob": "**/*",
+                "input": "legacy-assets/assets",
+                "output": "assets/"
+              },
+              {
+                "glob": "**/*",
+                "input": "legacy-assets/icons",
+                "output": "icons/"
+              }
+            ],
+            "styles": [
+              "legacy-assets/assets/player.css"
+            ],
+            "scripts": []
+          },
+          "configurations": {
+            "production": {
+              "optimization": true,
+              "outputHashing": "all",
+              "budgets": [
+                {
+                  "type": "initial",
+                  "maximumWarning": "1mb",
+                  "maximumError": "3mb"
+                }
+              ]
+            }
+          },
+          "defaultConfiguration": "production"
+        },
+        "serve": {
+          "builder": "@angular/build:dev-server",
+          "options": {
+            "buildTarget": "receptor:build"
+          },
+          "configurations": {
+            "development": {
+              "buildTarget": "receptor:build"
+            }
+          }
+        }
+      }
+    }
+  }
+}

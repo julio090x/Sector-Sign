@@ -1,0 +1,13 @@
+{
+  "version": "0.7.0",
+  "released_at": "2026-10-24T12:03:36Z",
+  "channel": "beta",
+  "android_version_code": 7,
+  "changes": [
+    "Programación de varias listas por días, fechas y horarios; rotación ordenada y prioridades.",
+    "Lista de respaldo y cambio automático de franja sin conexión tras descargar la publicación completa.",
+    "Dispositivos con última señal, versión, resolución, memoria, anuncio y listas activas.",
+    "Confirmación de publicación reintentada tras pérdidas de red.",
+    "Proyecto Android compartido con selección de archivos y configuración adaptable."
+  ]
+}

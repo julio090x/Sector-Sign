@@ -1,0 +1,4 @@
+[
+ {"id":"SKU-1001","name":"Aceite vegetal El Taita","presentation":"800 ML","public_price":5.50,"public_min_quantity":1,"public_promotion":true,"public_updated_at":"2026-10-24T00:00:00-05:00","cost":2.00,"stock":12345,"customer_data":"NEVER_SENT"},
+ {"id":"SKU-1002","name":"Leche Bonlé Rosada","presentation":"Lata 390 g","public_price":2.30,"public_min_quantity":1,"public_promotion":true,"public_updated_at":"2026-10-24T00:01:00-05:00"}
+]

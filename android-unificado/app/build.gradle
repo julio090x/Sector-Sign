@@ -1,7 +1,9 @@
 plugins { id 'com.android.application' }
+
 android {
     namespace 'com.sectorsign.apps'
     compileSdk 35
+
     defaultConfig {
         applicationId 'com.sectorsign.apps'
         minSdk 26
@@ -31,7 +33,8 @@ android {
     buildTypes {
         release {
             minifyEnabled false
-            // Sign outside GitHub with an owner-controlled private keystore.
+            // IMPORTANT: Production release signing must use an owner-controlled keystore.
+            // Debug builds are automatically signed with the local Android debug certificate.
         }
     }
     compileOptions {
