@@ -1,15 +1,15 @@
-name: Sector Sign - Source import and MySQL QA
+name: Sector Sign - Import 0.8 and MySQL QA
 on:
   push:
     branches: [main]
-    paths: ['.bootstrap/**', '.github/workflows/import-sources.yml', 'server/**']
+    paths: ['.import/**', '.github/workflows/import-sources.yml', 'server/**', 'integracion-inventario-pro-360/**']
   workflow_dispatch:
 permissions:
   contents: write
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     services:
       mysql:
         image: mysql:8.4
@@ -22,50 +22,53 @@ jobs:
           --health-interval=10s --health-timeout=5s --health-retries=12
     steps:
       - uses: actions/checkout@v4
-      - name: Import verified source archive when present
+      - name: Import verified source 0.8.0
         shell: bash
         run: |
           set -euo pipefail
-          if [ -d .bootstrap ]; then
+          if [ -f .import/SectorSign-Fuentes-Completas-0.8.0.zip ]; then
             python3 - <<'PY'
-          import pathlib,hashlib,lzma,tarfile,io
-          parts=sorted(pathlib.Path('.bootstrap').glob('source*.part'))
-          assert len(parts)==18, 'Incomplete import'
-          data=b''.join(p.read_bytes() for p in parts)
-          assert hashlib.sha256(data).hexdigest()=='bd62bd1e92b21b658598ac221c0c253817bfcdd107e2a7bf3bd4a5eb449a74b8'
-          with tarfile.open(fileobj=io.BytesIO(lzma.decompress(data))) as tf:
-            for m in tf.getmembers():
-              p=pathlib.PurePosixPath(m.name)
-              assert m.isfile() and not p.is_absolute() and '..' not in p.parts
-              assert '.github' not in p.parts and '.git' not in p.parts
-              assert p.name not in {'config.php','install.key','.env'}
-              assert p.suffix not in {'.jks','.keystore'}
-            tf.extractall('.',filter='data')
-          print('Source checksum and path safety verified')
+          from pathlib import Path, PurePosixPath
+          from zipfile import ZipFile
+          import hashlib
+          archive=Path('.import/SectorSign-Fuentes-Completas-0.8.0.zip')
+          assert hashlib.sha256(archive.read_bytes()).hexdigest()=='4a328858e9e800633f5a38d7020c24987ba68521a051a90ec4b0fcf9972d30b5', 'Wrong ZIP checksum'
+          allowed={'server','angular-unificado','android-unificado','integracion-inventario-pro-360','documentacion','scripts'}
+          names={'README.md','LEEME-PRIMERO.md','.gitignore'}
+          with ZipFile(archive) as z:
+            assert z.testzip() is None
+            for entry in z.infolist():
+              path=PurePosixPath(entry.filename)
+              assert entry.file_size<4*1024*1024 and not entry.is_dir()
+              assert not path.is_absolute() and '..' not in path.parts
+              assert path.parts[0] in allowed or entry.filename in names
+              assert not any(p in path.parts for p in {'.git','.github','node_modules','storage','build'})
+              assert path.name not in {'config.php','install.key','.env'} and path.suffix not in {'.jks','.keystore','.apk'}
+              dest=Path(entry.filename);dest.parent.mkdir(parents=True,exist_ok=True)
+              dest.write_bytes(z.read(entry))
+          print('Verified and extracted Sector Sign 0.8.0 sources')
           PY
-            git rm -r .bootstrap
-            git add server android-unificado angular-unificado integracion-inventario-pro-360 documentacion scripts README.md LEEME-PRIMERO.md .gitignore
-            git add -u
+            git rm -r .import
+            git add -A
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            if ! git diff --cached --quiet; then
-              git commit -m 'Import Sector Sign 0.7.0: connected devices and multi-playlist scheduling'
-              git push origin HEAD:main
-            fi
+            git commit -m 'Import Sector Sign 0.8.0: videowalls, media, groups and HMAC catalog'
+            git push origin HEAD:main
           fi
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
           extensions: pdo_mysql, mbstring, sodium, curl, zip
           coverage: none
-      - name: Static and schedule tests
+      - name: Static and contract tests
         shell: bash
         run: |
           set -euo pipefail
           mkdir -p qa-results
           sh server/tests/qa.sh | tee qa-results/static.txt
+          php integracion-inventario-pro-360/tests/contract.php | tee qa-results/inventory.txt
           python3 scripts/verificar-versiones.py | tee qa-results/versions.txt
-      - name: Real MySQL and HTTP integration
+      - name: MySQL 8.4 and HTTP integration
         shell: bash
         env:
           SECTOR_SIGN_QA: '1'
@@ -81,7 +84,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: SectorSign-QA-0.7.0
+          name: SectorSign-QA-0.8.0
           path: qa-results/
           retention-days: 30
           if-no-files-found: warn
