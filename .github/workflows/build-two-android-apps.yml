@@ -17,6 +17,9 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.10.2'
@@ -34,7 +37,7 @@ jobs:
             debug=$(find android-unificado/app/build/outputs/apk/$app/debug -name '*.apk' -print -quit)
             release=$(find android-unificado/app/build/outputs/apk/$app/release -name '*.apk' -print -quit)
             "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$debug"
-            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$release" | head -1
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$release" > "deliverables/$app-manifest.txt"
             "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c 4 "$release"
             cp "$debug" deliverables/evaluation/SectorSign-$app-0.7.0-debug.apk
             cp "$release" deliverables/unsigned/SectorSign-$app-0.7.0-unsigned.apk
