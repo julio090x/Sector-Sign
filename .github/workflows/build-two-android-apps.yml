@@ -1,0 +1,49 @@
+name: Sector Sign - Android APK
+on:
+  push:
+    branches: [main]
+    paths: ['android-unificado/**', '.github/workflows/build-two-android-apps.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  android:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Android SDK
+        run: sdkmanager 'platform-tools' 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Build both products
+        working-directory: android-unificado
+        run: gradle --no-daemon :app:assembleCentroDebug :app:assembleReceptorDebug :app:assembleCentroRelease :app:assembleReceptorRelease
+      - name: Verify signatures and prepare files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p deliverables/unsigned deliverables/evaluation deliverables/tools
+          for app in centro receptor; do
+            debug=$(find android-unificado/app/build/outputs/apk/$app/debug -name '*.apk' -print -quit)
+            release=$(find android-unificado/app/build/outputs/apk/$app/release -name '*.apk' -print -quit)
+            "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$debug"
+            "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$release" | head -1
+            "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c 4 "$release"
+            cp "$debug" deliverables/evaluation/SectorSign-$app-0.7.0-debug.apk
+            cp "$release" deliverables/unsigned/SectorSign-$app-0.7.0-unsigned.apk
+          done
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" deliverables/tools/
+          find deliverables -type f -exec sha256sum {} \; > deliverables/SHA256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SectorSign-Android-0.7.0
+          path: deliverables/
+          if-no-files-found: error
+          retention-days: 30

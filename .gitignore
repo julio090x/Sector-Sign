@@ -1,0 +1,12 @@
+**/build/
+**/.gradle/
+**/local.properties
+**/node_modules/
+**/config.php
+**/*.jks
+**/*.keystore
+**/.env
+server/private/install.key
+server/storage/*
+!server/storage/.gitignore
+!server/storage/.htaccess
