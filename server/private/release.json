@@ -1,13 +1,15 @@
 {
-  "version": "0.7.0",
-  "released_at": "2026-10-24T12:03:36Z",
+  "version": "0.8.0",
+  "released_at": "2026-10-24T13:53:22Z",
   "channel": "beta",
-  "android_version_code": 7,
+  "android_version_code": 8,
   "changes": [
-    "Programación de varias listas por días, fechas y horarios; rotación ordenada y prioridades.",
-    "Lista de respaldo y cambio automático de franja sin conexión tras descargar la publicación completa.",
-    "Dispositivos con última señal, versión, resolución, memoria, anuncio y listas activas.",
-    "Confirmación de publicación reintentada tras pérdidas de red.",
-    "Proyecto Android compartido con selección de archivos y configuración adaptable."
+    "Biblioteca publicitaria con carga múltiple de imágenes y videos mediante arrastrar y soltar.",
+    "Mover o copiar anuncios entre listas, con control de versiones y bloqueo de ediciones concurrentes.",
+    "Grupos de pantallas por local: campañas independientes y controles remotos en conjunto.",
+    "Videowalls de 1 a 16 pantallas: modo espejo o mural panorámico en mosaico, sincronización aproximada.",
+    "Intros publicitarias Full HD generadas con texto personalizable y paletas de color.",
+    "Reproducción de fuentes en directo HTTPS MP4/HLS cuando el dispositivo lo admita (requiere internet).",
+    "Integración comercial firmada compatible con Inventario Pro 360, pendiente de conectar al ZIP vigente real."
   ]
 }

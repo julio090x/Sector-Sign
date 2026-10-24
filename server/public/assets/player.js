@@ -1,11 +1,11 @@
 'use strict';
-const PLAYER_BUILD=window.SS_BOOT_RELEASE||{version:'0.7.0',released_at:'2026-10-24T12:03:36Z'};
+const PLAYER_BUILD=window.SS_BOOT_RELEASE||{version:'0.8.0',released_at:'2026-10-24T13:53:22Z'};
 let syncFailures=0,renderGeneration=0,isDownloading=false,telemetryBusy=false;
 // Local-first player; media and active manifest remain in IndexedDB if the network is lost.
 const el=id=>document.getElementById(id);
 const prefsKey='sector-sign-player-030'; // Compatible with 0.3: do not silently unlink devices on upgrade.
 let device=JSON.parse(localStorage.getItem(prefsKey)||'null');
-let activeManifest=null,serverTimezone='America/Lima',scheduleTimer=null,syncTimer=null,renderTimer=null,activeNode=null,objectUrl=null,position=0,paused=false,muted=true,requestRunning=false,lastSync=false,ready=false;
+let activeWall=null,clockOffsetMs=0;let activeManifest=null,serverTimezone='America/Lima',scheduleTimer=null,syncTimer=null,renderTimer=null,activeNode=null,objectUrl=null,position=0,paused=false,muted=true,requestRunning=false,lastSync=false,ready=false;
 const stage=el('stage'),setup=el('setup');
 let idb;let lastPairCodeAt=Date.now();let activeSelection=null,selectionSignature='',currentItem=null,downloadPercent=0,lastTelemetry=0;
 function playerDate(value){if(!value)return '—';const d=new Date(value);return isNaN(d)?String(value):new Intl.DateTimeFormat('es-PE',{dateStyle:'medium',timeStyle:'short',timeZone:'America/Lima'}).format(d)}
@@ -74,20 +74,39 @@ async function playNext(){
  const generation=++renderGeneration;clearTimeout(renderTimer);
  if(paused)return;
  const items=playable();if(!items.length){currentItem=null;activeNode?.pause?.();activeNode?.remove();activeNode=null;if(objectUrl){URL.revokeObjectURL(objectUrl);objectUrl=null;}stage.innerHTML='<div style="display:grid;place-items:center;height:100%;color:#afc6e8;text-align:center"><div>▣<p>No hay anuncios programados para este momento.</p></div></div>';renderTimer=setTimeout(playNext,60000);return;}
- const idx=position%items.length;position=(position+1)%items.length;const it=items[idx];currentItem=it;
+ let idx=position%items.length,remainingMs=Math.max(2,Number(items[idx].duration)||8)*1000,offsetInSlide=0;
+ // Walls mirror the same sequence. All members compute item position from a shared UTC epoch;
+ // devices without hardware frame lock can still drift in video decoding.
+ if(activeWall?.mode && activeManifest?.created_at){
+  const stamp=String(activeManifest.created_at).replace(' ','T');
+  const epoch=Date.parse(/Z$|[+-]\d\d:\d\d$/.test(stamp)?stamp:stamp+'Z');
+  if(Number.isFinite(epoch)){
+    const durations=items.map(i=>Math.max(2,Number(i.duration)||8)*1000),total=durations.reduce((a,b)=>a+b,0);
+    let elapsed=(((Date.now()+clockOffsetMs-epoch)%total)+total)%total;
+    for(let j=0;j<items.length;j++){if(elapsed<durations[j]){idx=j;offsetInSlide=elapsed;remainingMs=durations[j]-elapsed;break;}elapsed-=durations[j];}
+  }
+ }
+ position=(idx+1)%items.length;const it=items[idx];currentItem=it;
  try{
-  const asset=await dbGet('assets',it.id+':'+it.sha256);if(generation!==renderGeneration||paused)return;if(!(asset instanceof Blob))throw Error('Archivo local no disponible');
-  const url=URL.createObjectURL(asset);const video=it.mime.startsWith('video/');
+  const streaming=it.kind==='stream';let url;
+  if(streaming){if(!navigator.onLine)throw Error('Transmisión requiere internet');url=it.stream_url;}
+  else{const asset=await dbGet('assets',it.id+':'+it.sha256);if(generation!==renderGeneration||paused)return;if(!(asset instanceof Blob))throw Error('Archivo local no disponible');url=URL.createObjectURL(asset);}
+  const video=streaming||it.mime.startsWith('video/');
   const node=document.createElement(video?'video':'img');node.className='slide';node.style.objectFit=it.fit==='cover'?'cover':'contain';
-  if(it.transition==='none')node.classList.add('no-fade');
+  if(activeWall?.mode==='span'){
+    node.classList.add('wall-tile');node.style.width=(activeWall.cols*100)+'%';node.style.height=(activeWall.rows*100)+'%';
+    node.style.left=(-activeWall.column*100)+'%';node.style.top=(-activeWall.row*100)+'%';node.style.objectFit='fill';
+  }
+  if(it.transition==='none'||activeWall?.mode==='span')node.classList.add('no-fade');
+  if(streaming&&it.mime==='application/vnd.apple.mpegurl'&&!node.canPlayType('application/vnd.apple.mpegurl'))throw Error('HLS no compatible con este reproductor');
   node.src=url;
   if(video){node.muted=muted;node.autoplay=true;node.loop=true;node.playsInline=true;node.preload='auto';node.addEventListener('error',()=>showStatus('No se puede reproducir este video'));}
   if(!video)node.alt=it.name||'Publicidad';
-  const previous=activeNode,previousUrl=objectUrl;activeNode=node;objectUrl=url;if(!previous)stage.innerHTML='';stage.appendChild(node);
+  const previous=activeNode,previousUrl=objectUrl;activeNode=node;objectUrl=streaming?null:url;if(!previous)stage.innerHTML='';stage.appendChild(node);
   requestAnimationFrame(()=>node.classList.add('visible'));
-  if(video)node.play().catch(()=>showStatus('Toca la pantalla para iniciar el video'));
+  if(video){if(offsetInSlide>0&&!streaming)node.addEventListener('loadedmetadata',()=>{try{node.currentTime=(offsetInSlide/1000)%Math.max(1,node.duration||100000)}catch{}},{once:true});node.play().catch(()=>showStatus('Toca la pantalla para iniciar el video'));}
   setTimeout(()=>{if(previous?.parentNode)previous.remove();if(previousUrl)URL.revokeObjectURL(previousUrl)},it.transition==='fade'?550:50);
-  renderTimer=setTimeout(playNext,Math.max(2,Number(it.duration)||8)*1000);
+  renderTimer=setTimeout(playNext,Math.max(250,remainingMs));
  }catch(e){if(generation!==renderGeneration)return;showStatus('Contenido pendiente: '+it.name);renderTimer=setTimeout(playNext,2000);}
 }
 function startPlayback(manifest){activeManifest=manifest;serverTimezone=manifest.timezone||serverTimezone;selectionSignature=selection().signature;position=0;hideSetup();const n=el('current-publication');if(n)n.textContent='v'+manifest.version+' · '+playerDate(manifest.created_at);playNext();}
@@ -96,6 +115,7 @@ async function stageNewManifest(manifest){
  if(activeManifest?.id===manifest.id)return;
  showStatus('Descargando publicación v'+manifest.version);
  let complete=0;downloadPercent=0;for(const it of manifest.items){
+  if(it.kind==='stream'){complete++;continue;} // Online-only; never stored as an offline asset.
   downloadPercent=Math.floor(100*complete++/manifest.items.length);
   const key=it.id+':'+it.sha256;
   let existing=await dbGet('assets',key);if(existing instanceof Blob&&existing.size===Number(it.bytes))continue;
@@ -140,10 +160,20 @@ async function sync(){
  if(requestRunning)return;requestRunning=true;
  try{
   const data=await request('player.sync');
-  const firstOnline=!lastSync;lastSync=true;syncFailures=0;el('connection').textContent='● En línea';setRelease(data.software);lastContact();
+  const firstOnline=!lastSync;lastSync=true;syncFailures=0;
+  if(data.server_utc){const serverTime=Date.parse(data.server_utc);if(Number.isFinite(serverTime))clockOffsetMs=serverTime-Date.now();}
+  const oldWall=JSON.stringify(activeWall||null);activeWall=data.wall||null;if(oldWall!==JSON.stringify(activeWall))dbPut('settings','wall',activeWall).catch(()=>{});el('connection').textContent='● En línea';setRelease(data.software);lastContact();
   if(!data.paired){
-   if(activeManifest){showStatus('Sin vinculación: reproduce el último contenido descargado');}
-   if(!ready)showSetup();
+   // An online unpair must revoke previous client's advertisements, not leave
+   // their cached campaigns visible while the device awaits a new owner.
+   if(activeManifest){
+    clearTimeout(renderTimer);activeNode?.pause?.();activeNode?.remove();activeNode=null;
+    if(objectUrl){URL.revokeObjectURL(objectUrl);objectUrl=null;}
+    activeManifest=null;activeWall=null;stage.replaceChildren();
+    await dbClear().catch(()=>{});
+    showStatus('Pantalla desvinculada. Contenido anterior eliminado');
+   }
+   showSetup();
    if(el('pair-code').textContent.includes('··')||el('pair-code').textContent==='SIN RED'||Date.now()-lastPairCodeAt>14*60*1000)await renewPairCode();
    return;
   }
@@ -152,6 +182,7 @@ async function sync(){
   if(data.manifest && (!activeManifest||activeManifest.id!==data.manifest.id)){
     isDownloading=true;try{await stageNewManifest(data.manifest);}catch(e){showStatus('Descarga pendiente · sigue la campaña anterior');await request('player.ack',{error:e.message}).catch(()=>{});}finally{isDownloading=false;}
   }else if(activeManifest&&!activeNode&&!paused){playNext();}
+  if(activeManifest&&oldWall!==JSON.stringify(activeWall)&&!paused)playNext();
   if(activeManifest&&Number(data.applied_publication_id)!==Number(activeManifest.id))await request('player.ack',{publication_id:activeManifest.id});
   if(data.commands?.length)await processCommands(data.commands);
   if(Date.now()-lastTelemetry>15000){await reportTelemetry().catch(()=>{});}
@@ -165,11 +196,11 @@ async function sync(){
 function scheduleSync(delay=5000){clearTimeout(syncTimer);syncTimer=setTimeout(async()=>{await sync();scheduleSync(lastSync?5000:Math.min(60000,5000*2**syncFailures));},delay+Math.floor(Math.random()*700));}
 async function reportTelemetry(){
  if(!device?.token||telemetryBusy)return;telemetryBusy=true;try{const current=selection();const memory=navigator.storage?.estimate?await navigator.storage.estimate().catch(()=>({})):{};
- await request('player.status',{app_version:(navigator.userAgent.match(/SectorSign\/([^\s]+)/)||[])[1]||'',web_version:PLAYER_BUILD.version,platform:navigator.userAgent.slice(-140),screen:screen.width+' × '+screen.height,state:isDownloading?'downloading':paused?'paused':current.items.length?'playing':'idle',current_item:currentItem?.name||'',schedule:current.fallback?'Respaldo':current.rules.map(x=>x.name).join(' / '),playlists:current.lists.map(x=>x.name),storage_bytes:memory.usage||0,quota_bytes:memory.quota||0,cached_files:activeManifest?.items?.length||0,download_percent:downloadPercent});lastTelemetry=Date.now();}finally{telemetryBusy=false;}
+ await request('player.status',{app_version:(navigator.userAgent.match(/SectorSign\/([^\s]+)/)||[])[1]||'',web_version:PLAYER_BUILD.version,platform:navigator.userAgent.slice(-140),screen:screen.width+' × '+screen.height,state:isDownloading?'downloading':paused?'paused':current.items.length?'playing':'idle',current_item:currentItem?.name||'',schedule:current.fallback?'Respaldo':current.rules.map(x=>x.name).join(' / '),wall:activeWall?.name||'',playlists:current.lists.map(x=>x.name),storage_bytes:memory.usage||0,quota_bytes:memory.quota||0,cached_files:activeManifest?.items?.length||0,download_percent:downloadPercent});lastTelemetry=Date.now();}finally{telemetryBusy=false;}
 }
 async function boot(){
  el('server-host').textContent=location.origin;el('device-id').textContent=device?.id||'Sin registrar';
- try{idb=await dbOpen();activeManifest=await dbGet('settings','manifest')||null;}catch(e){showStatus('Almacenamiento offline no disponible');}
+ try{idb=await dbOpen();activeManifest=await dbGet('settings','manifest')||null;activeWall=await dbGet('settings','wall')||null;}catch(e){showStatus('Almacenamiento offline no disponible');}
  if(activeManifest){downloadPercent=100;startPlayback(activeManifest);}
  else showSetup();
  setInterval(()=>{if(Date.now()-lastTelemetry>14000)reportTelemetry().catch(()=>{});},15000);

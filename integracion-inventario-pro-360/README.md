@@ -1,4 +1,4 @@
-# Conector Inventario Pro 360 — Sector Sign 0.4.0
+# Conector Inventario Pro 360 — Sector Sign 0.8.0
 
 Conector **independiente, de solo lectura comercial**, que no toca documentos, ventas, compras, caja, stock, costos, impuestos, proveedores ni credenciales de la plataforma. `src/SectorSignPublisher.php` exige URL HTTPS y envía un JSON firmado con HMAC-SHA256.
 
@@ -11,3 +11,16 @@ Conector **independiente, de solo lectura comercial**, que no toca documentos, v
 5. Ejecuta `php tests/contract.php` para validar el contrato de datos públicos y firma.
 
 **No subas el ejemplo de productos a producción**: sus registros son demostrativos, no datos reales. Usa variables o archivos de configuración privados para la URL, Key ID y Secret.
+
+## Sincronización con un JSON comercial (Cron privado)
+
+El nuevo `bin/enviar-catalogo-publico.php` lee un archivo **JSON comercial ya autorizado** que Inventario Pro 360 exporte en un directorio privado (nunca su base financiera/stock). El script no necesita conectarse directamente a otra base de datos.
+
+```bash
+SECTOR_SIGN_URL='https://sign.ejemplo.com' \
+SECTOR_SIGN_KEY_ID='ID_OBTENIDO_DEL_PANEL' \
+SECTOR_SIGN_SECRET='SECRETO_PRIVADO' \
+php bin/enviar-catalogo-publico.php /ruta/privada/catalogo-publico.json
+```
+
+Programa el comando en aaPanel Cron cuando tengas configurado el exportador del **ZIP vigente real** de Inventario Pro. Hasta entonces es un conector interoperable probado por contrato, **no una conexión en vivo a tus productos reales**. No abras un puerto MySQL de Inventario ni pongas las claves en GitHub.

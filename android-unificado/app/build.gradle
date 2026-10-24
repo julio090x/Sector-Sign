@@ -8,9 +8,9 @@ android {
         applicationId 'com.sectorsign.apps'
         minSdk 26
         targetSdk 35
-        versionCode 7
-        versionName '0.7.0'
-        buildConfigField 'String', 'RELEASED_AT', '"2026-10-24T12:03:36Z"'
+        versionCode 8
+        versionName '0.8.0'
+        buildConfigField 'String', 'RELEASED_AT', '"2026-10-24T13:53:22Z"'
     }
     buildFeatures { buildConfig true }
     flavorDimensions += 'purpose'

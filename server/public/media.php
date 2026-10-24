@@ -14,6 +14,7 @@ try{
  if(!$allowed){$user=current_user();$allowed=$user && (int)$user['org_id']===$org;}
  if(!$allowed){http_response_code(403);exit;}
  header('X-Content-Type-Options: nosniff');header('Cache-Control: private, max-age=3600');
+ if($media['kind']==='stream'){if(!$media['stream_url']){http_response_code(404);exit;}header('Location: '.$media['stream_url'],true,302);exit;}
  if($url=storage_url($media)){header('Location: '.$url,true,302);exit;}
  $path=media_dir().'/'.$media['stored_name'];if(!is_file($path)){http_response_code(404);exit;}
  $length=filesize($path);$start=0;$end=$length-1;

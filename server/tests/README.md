@@ -29,3 +29,5 @@ Rechaza otros nombres de base y emplea `BEGIN/ROLLBACK` para no persistir usuari
 ## Pruebas finales manuales necesarias
 
 Subir PNG+MP4 reales → crear lista → vincular pantalla → publicar → comprobar última versión recibida → cortar WAN → 10 minutos de reproducción → reconectar → verificar backup cifrado → restaurar en copia QA. Repetir en tu H96 y teléfonos/tablets objetivo.
+
+0.8: `wall-creatives.php` verifica videowalls, generador de intros y URLs HTTPS de streaming.

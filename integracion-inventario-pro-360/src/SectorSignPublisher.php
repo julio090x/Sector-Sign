@@ -21,7 +21,9 @@ final class SectorSignPublisher {
       // Should be a monotonically increasing PUBLIC catalog revision per product.
       $rev=$p['public_revision']??$p['public_updated_at']??$p['updated_at']??null;
       if($rev===null)continue; // Sin revisión estable podrían generarse anuncios idénticos en cada sincronización.
-      $sequence=is_numeric($rev)?(int)$rev:(int)(strtotime((string)$rev)?:time());
+      $time=is_numeric($rev)?(int)$rev:strtotime((string)$rev);
+      if($time===false||(int)$time<1)continue; // Never invent a revision from an invalid date.
+      $sequence=(int)$time;
       $result[]=['id'=>self::cut($id,160),'name'=>self::cut($name,190),'presentation'=>self::cut((string)($p['public_presentation']??$p['presentation']??''),100),'public_price'=>round((float)$price,2),'min_quantity'=>isset($p['public_min_quantity'])?(float)$p['public_min_quantity']:null,'promotional'=>!empty($p['public_promotion']),'enabled'=>!array_key_exists('public_enabled',$p)||!empty($p['public_enabled']),'sequence'=>max(1,$sequence),'revision'=>(string)max(1,$sequence)];
     }
     return $result;

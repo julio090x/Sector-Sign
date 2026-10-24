@@ -4,6 +4,7 @@ BASE="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 find "$BASE" -name '*.php' -type f -print | while IFS= read -r file; do php -l "$file" >/dev/null; done
 echo 'PASS: sintaxis de todos los PHP'
 php "$BASE/tests/contracts.php"
+php "$BASE/tests/wall-creatives.php"
 php "$BASE/tests/program-validation.php"
 if command -v node >/dev/null 2>&1; then
   node --check "$BASE/public/assets/app.js"

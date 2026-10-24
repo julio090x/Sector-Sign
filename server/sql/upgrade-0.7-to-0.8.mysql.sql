@@ -1,0 +1,15 @@
+-- Apply only after backups. The CLI tool handles already-present columns.
+ALTER TABLE media MODIFY COLUMN kind ENUM('image','video','stream') NOT NULL;
+ALTER TABLE media ADD COLUMN stream_url TEXT NULL;
+CREATE TABLE IF NOT EXISTS video_walls (
+ id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,org_id BIGINT UNSIGNED NOT NULL,
+ name VARCHAR(120) NOT NULL,mode ENUM('mirror','span') NOT NULL DEFAULT 'mirror',
+ `rows` TINYINT UNSIGNED NOT NULL DEFAULT 1,cols TINYINT UNSIGNED NOT NULL DEFAULT 2,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ KEY idx_walls_org(org_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS video_wall_members (
+ wall_id BIGINT UNSIGNED NOT NULL,screen_id CHAR(32) NOT NULL,slot TINYINT UNSIGNED NOT NULL,
+ PRIMARY KEY(wall_id,slot),UNIQUE KEY uniq_wall_screen(screen_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

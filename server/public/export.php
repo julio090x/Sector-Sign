@@ -5,6 +5,8 @@ try{
  $user=auth();$id=(int)($_GET['id']??0);$format=in_array($_GET['format']??'html',['html','zip'],true)?$_GET['format']:'html';
  $list=db_one('SELECT * FROM playlists WHERE id=? AND org_id=?',[$id,$user['org_id']]);if(!$list){http_response_code(404);exit('Lista no encontrada');}
  $items=build_manifest((int)$user['org_id'],$id);if(!$items){http_response_code(400);exit('Lista vacía');}
+ // Live streams are inherently online-only and cannot be embedded in a portable ZIP.
+ if(array_filter($items,static fn($it)=>($it['kind']??'')==='stream')){http_response_code(422);exit('Esta lista contiene una transmisión online. Retira el directo para descargar la versión offline.');}
  $total=array_sum(array_column($items,'bytes'));
  if($total>120*1024*1024){http_response_code(413);exit('La lista excede 120 MB. Utiliza el reproductor online con caché o divide la lista.');}
  if($format==='html'&&$total>40*1024*1024){http_response_code(413);exit('HTML único limitado a 40 MB. Elige exportar como ZIP, que admite hasta 120 MB.');}

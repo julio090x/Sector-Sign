@@ -40,9 +40,9 @@ CREATE TABLE IF NOT EXISTS display_groups (
 CREATE TABLE IF NOT EXISTS media (
  id CHAR(32) NOT NULL PRIMARY KEY, org_id BIGINT UNSIGNED NOT NULL,
  original_name VARCHAR(190) NOT NULL, stored_name VARCHAR(80) NOT NULL UNIQUE,
- mime VARCHAR(80) NOT NULL, kind ENUM('image','video') NOT NULL,
+ mime VARCHAR(80) NOT NULL, kind ENUM('image','video','stream') NOT NULL,
  bytes BIGINT UNSIGNED NOT NULL, sha256 CHAR(64) NOT NULL,
- backend ENUM('local','s3','ftps') NOT NULL DEFAULT 'local', object_key VARCHAR(200) DEFAULT NULL,
+ backend ENUM('local','s3','ftps') NOT NULL DEFAULT 'local', object_key VARCHAR(200) DEFAULT NULL, stream_url TEXT NULL,
  deleted_at DATETIME NULL, created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
  KEY idx_media_org(org_id,created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -143,4 +143,19 @@ CREATE TABLE IF NOT EXISTS programs (
 CREATE TABLE IF NOT EXISTS device_status (
  screen_id CHAR(32) NOT NULL PRIMARY KEY, telemetry_json LONGTEXT NOT NULL,
  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+
+-- 0.8: Walls are optional and are independent of campaign groups.
+CREATE TABLE IF NOT EXISTS video_walls (
+ id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,org_id BIGINT UNSIGNED NOT NULL,
+ name VARCHAR(120) NOT NULL,mode ENUM('mirror','span') NOT NULL DEFAULT 'mirror',
+ `rows` TINYINT UNSIGNED NOT NULL DEFAULT 1,cols TINYINT UNSIGNED NOT NULL DEFAULT 2,
+ created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+ KEY idx_walls_org(org_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS video_wall_members (
+ wall_id BIGINT UNSIGNED NOT NULL,screen_id CHAR(32) NOT NULL,slot TINYINT UNSIGNED NOT NULL,
+ PRIMARY KEY(wall_id,slot),UNIQUE KEY uniq_wall_screen(screen_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

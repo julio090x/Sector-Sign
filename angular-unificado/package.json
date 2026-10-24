@@ -1,6 +1,6 @@
 {
   "name": "sector-sign-angular-unificado",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "scripts": {
     "start:centro": "ng serve centro --proxy-config proxy.conf.json --port 4200",

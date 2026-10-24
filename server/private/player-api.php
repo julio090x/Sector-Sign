@@ -39,12 +39,14 @@ function player_action(string $action):never {
         $commands=db_all('SELECT id,action FROM screen_commands WHERE screen_id=? AND status IN ("queued","delivered") ORDER BY id ASC LIMIT 20',[$id]);
         foreach($commands as $c)db_run('UPDATE screen_commands SET status="delivered",delivered_at=COALESCE(delivered_at,UTC_TIMESTAMP()) WHERE id=? AND status="queued"',[$c['id']]);
         
+        require_once __DIR__.'/walls.php';
+        $wall=wall_for_screen($id,(int)$s['org_id']);
         $org=db_one('SELECT timezone FROM organizations WHERE id=?',[$s['org_id']]);
-        ok(['paired'=>true,'timezone'=>$org['timezone']??'America/Lima','screen'=>['id'=>$id,'name'=>$s['name'],'orientation'=>$s['orientation']],'manifest'=>$manifest,'applied_publication_id'=>(int)($s['applied_publication_id']??0),'commands'=>$commands,'software'=>release_info(),'server_utc'=>gmdate(DATE_ATOM)]);
+        ok(['paired'=>true,'timezone'=>$org['timezone']??'America/Lima','screen'=>['id'=>$id,'name'=>$s['name'],'orientation'=>$s['orientation']],'manifest'=>$manifest,'wall'=>$wall,'applied_publication_id'=>(int)($s['applied_publication_id']??0),'commands'=>$commands,'software'=>release_info(),'server_utc'=>gmdate(DATE_ATOM)]);
     }
     if($action==='player.status'){
         if(!$s['org_id'])fail('Vinculación pendiente',403);
-        $strings=['app_version'=>40,'web_version'=>30,'platform'=>140,'screen'=>40,'state'=>30,'current_item'=>190,'schedule'=>190];$clean=[];
+        $strings=['app_version'=>40,'web_version'=>30,'platform'=>140,'screen'=>40,'state'=>30,'current_item'=>190,'schedule'=>190,'wall'=>100];$clean=[];
         foreach($strings as $key=>$limit)$clean[$key]=mb_substr(trim((string)($p[$key]??'')),0,$limit);
         $clean['playlists']=array_map(fn($v)=>mb_substr((string)$v,0,160),array_slice((array)($p['playlists']??[]),0,30));
         foreach(['storage_bytes','quota_bytes','cached_files','download_percent'] as $key)$clean[$key]=max(0,min(9007199254740991,(float)($p[$key]??0)));

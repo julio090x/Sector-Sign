@@ -4,7 +4,7 @@ require __DIR__.'/../private/bootstrap.php';
 require __DIR__.'/../private/inventory.php';
 $action=(string)($_GET['action']??$_POST['action']??'');
 $method=(string)($_SERVER['REQUEST_METHOD']??'GET');
-$readOnlyActions=['health','auth.me','dashboard','media.list','playlists.list','playlist.get','screens.list','groups.list','locations.list','catalog.list','users.list','audit.list','integrations.list','settings.get','backup.info','system.diagnostics','system.release','programs.list','player.sync'];
+$readOnlyActions=['health','auth.me','dashboard','media.list','playlists.list','playlist.get','screens.list','groups.list','locations.list','catalog.list','users.list','audit.list','integrations.list','settings.get','backup.info','system.diagnostics','system.release','programs.list','walls.list','player.sync'];
 // Security invariant: no state mutation can be performed with GET, including password/login flows.
 if($method==='GET'&&!in_array($action,$readOnlyActions,true))fail('Esta acción requiere POST',405);
 if(!in_array($method,['GET','POST'],true))fail('Método no permitido',405);
@@ -59,12 +59,13 @@ try{
     }catch(Throwable $e){if(db()->inTransaction())db()->rollBack();throw $e;}
     audit((int)$reset['org_id'],'system','auth.reset','user',(string)$user['id']);ok(['notice'=>'Contraseña actualizada. Inicia sesión.']);
  }
- $read=['dashboard','media.list','playlists.list','playlist.get','screens.list','groups.list','locations.list','catalog.list','users.list','audit.list','integrations.list','settings.get','backup.info','system.diagnostics','system.release','programs.list'];
+ $read=['dashboard','media.list','playlists.list','playlist.get','screens.list','groups.list','locations.list','catalog.list','users.list','audit.list','integrations.list','settings.get','backup.info','system.diagnostics','system.release','programs.list','walls.list'];
  $u=auth(in_array($action,$read,true)?'viewer':(str_starts_with($action,'users.')||str_starts_with($action,'integrations.')||str_starts_with($action,'settings.')||str_starts_with($action,'backup.')?'admin':'editor'));
  $org=org_id($u);
  if($_SERVER['REQUEST_METHOD']!=='GET')csrf();
  $p=input();
  if(str_starts_with($action,'programs.')){require __DIR__.'/../private/programs.php';program_action($action,$p,$u);}
+ if(str_starts_with($action,'walls.')){require __DIR__.'/../private/walls.php';wall_action($action,$p,$u);}
  switch($action){
  case 'dashboard':
     $screen=db_one('SELECT COUNT(*) AS total,SUM(last_seen_at>DATE_SUB(UTC_TIMESTAMP(),INTERVAL 35 SECOND)) AS online,SUM(paired_at IS NULL) AS pending FROM screens WHERE org_id=?',[$org]);
@@ -73,7 +74,7 @@ try{
     $last=db_all('SELECT action,actor,created_at,object_type FROM audit_events WHERE org_id=? ORDER BY id DESC LIMIT 6',[$org]);
     ok(['stats'=>['screens'=>(int)$screen['total'],'online'=>(int)$screen['online'],'media'=>(int)$med['c'],'playlists'=>(int)$lists['c']],'activity'=>$last,'storage_free_bytes'=>@disk_free_space(SS_ROOT.'/storage')?:0]);
  case 'media.list':
-    ok(['items'=>db_all('SELECT id,original_name AS name,mime,kind,bytes,sha256,created_at FROM media WHERE org_id=? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1000',[$org])]);
+    ok(['items'=>db_all('SELECT id,original_name AS name,mime,kind,bytes,sha256,stream_url,created_at FROM media WHERE org_id=? AND deleted_at IS NULL ORDER BY created_at DESC LIMIT 1000',[$org])]);
  case 'media.upload':
     if(empty($_FILES['file'])||!is_uploaded_file($_FILES['file']['tmp_name']))fail('Selecciona un archivo válido');
     $file=$_FILES['file'];$max=150*1024*1024;
@@ -93,6 +94,25 @@ try{
       if($storage['backend']!=='local')@unlink($destination);
       audit($org,$u['email'],'media.upload','media',$id,['name'=>$name]);ok(['id'=>$id]);
     }catch(Throwable $e){@unlink($destination);throw $e;}
+ case 'media.intro':
+    require_once __DIR__.'/../private/creatives.php';
+    try{$svg=make_intro_svg($p);}catch(InvalidArgumentException $e){fail($e->getMessage(),422);}
+    $id=pkid();$stored=$id.'.svg';$path=media_dir().'/'.$stored;
+    if(file_put_contents($path,$svg,LOCK_EX)===false)fail('No se pudo preparar la introducción',500);
+    try{$storage=storage_save($path,$stored,'image/svg+xml');
+      db_run('INSERT INTO media(id,org_id,original_name,stored_name,mime,kind,bytes,sha256,backend,object_key) VALUES(?,?,?,?,?,?,?,?,?,?)',[$id,$org,mb_substr('Intro · '.field($p,'title',90),0,190),$stored,'image/svg+xml','image',strlen($svg),hash('sha256',$svg),$storage['backend'],$storage['object_key']??null]);
+      if($storage['backend']!=='local')@unlink($path);
+      audit($org,$u['email'],'media.intro','media',$id);ok(['id'=>$id]);
+    }catch(Throwable $e){@unlink($path);throw $e;}
+ case 'media.stream':
+    require_once __DIR__.'/../private/creatives.php';
+    $name=required($p,'name',190);$url=required($p,'url',1500);
+    if(!validate_stream_url($url))fail('Utiliza una URL pública HTTPS terminada en .mp4 o .m3u8. No admite direcciones privadas.',422);
+    $path=(string)parse_url($url,PHP_URL_PATH);
+    $mime=str_ends_with(strtolower($path),'.m3u8')?'application/vnd.apple.mpegurl':'video/mp4';
+    $id=pkid();$stored=$id.'.url';
+    db_run('INSERT INTO media(id,org_id,original_name,stored_name,mime,kind,bytes,sha256,stream_url) VALUES(?,?,?,?,? ,"stream",0,?,?)',[$id,$org,$name,$stored,$mime,hash('sha256','stream:'.$url),$url]);
+    audit($org,$u['email'],'media.stream','media',$id,['format'=>$mime]);ok(['id'=>$id,'online_only'=>true]);
  case 'media.delete':
     $id=required($p,'id',32);$used=db_one('SELECT COUNT(*) AS c FROM playlist_items pi JOIN playlists pl ON pl.id=pi.playlist_id WHERE pi.media_id=? AND pl.org_id=?',[$id,$org]);
     if((int)$used['c']>0)fail('Retira el archivo de todas las listas antes de eliminarlo',409);
@@ -121,6 +141,27 @@ try{
  case 'playlists.delete':
     $id=(int)($p['id']??0);$pub=db_one('SELECT COUNT(*) AS c FROM publications WHERE playlist_id=? AND org_id=?',[$id,$org]);if((int)$pub['c']>0)fail('Esta lista tiene publicaciones históricas; archívala para conservar auditoría',409);
     db()->beginTransaction();db_run('DELETE FROM playlist_items WHERE playlist_id=? AND playlist_id IN (SELECT id FROM playlists WHERE org_id=?)',[$id,$org]);db_run('DELETE FROM playlists WHERE id=? AND org_id=?',[$id,$org]);db()->commit();ok();
+ case 'playlists.transfer_item':
+    $source=(int)($p['source_id']??0);$target=(int)($p['target_id']??0);
+    $index=(int)($p['index']??-1);$mode=(string)($p['mode']??'copy');
+    if($source<1||$target<1||$source===$target||$index<0||!in_array($mode,['copy','move'],true))fail('Origen, destino o acción inválida',422);
+    db()->beginTransaction();try{
+      // Consistent lock order reduces deadlocks when two editors exchange assets.
+      $ordered=[$source,$target];sort($ordered,SORT_NUMERIC);$locked=[];
+      foreach($ordered as $key){$row=db_one('SELECT id,revision FROM playlists WHERE id=? AND org_id=? FOR UPDATE',[$key,$org]);if(!$row)throw new InvalidArgumentException('Lista de origen o destino no disponible');$locked[$key]=$row;}
+      if((int)$locked[$source]['revision']!==(int)($p['source_revision']??-1)||(int)$locked[$target]['revision']!==(int)($p['target_revision']??-1))throw new RuntimeException('Las listas cambiaron en otra sesión. Vuelve a abrirlas.');
+      $item=db_one('SELECT * FROM playlist_items WHERE playlist_id=? AND position=? FOR UPDATE',[$source,$index]);if(!$item)throw new InvalidArgumentException('El anuncio ya no está en esta posición');
+      $n=(int)(db_one('SELECT COUNT(*) n FROM playlist_items WHERE playlist_id=?',[$target])['n']??0);if($n>=250)throw new InvalidArgumentException('La lista destino alcanzó 250 anuncios');
+      db_run('INSERT INTO playlist_items(playlist_id,media_id,position,duration_sec,fit,transition,schedule_json) VALUES(?,?,?,?,?,?,?)',[$target,$item['media_id'],$n,$item['duration_sec'],$item['fit'],$item['transition'],$item['schedule_json']]);
+      db_run('UPDATE playlists SET revision=revision+1 WHERE id=?',[$target]);
+      if($mode==='move'){
+       db_run('DELETE FROM playlist_items WHERE id=? AND playlist_id=?',[$item['id'],$source]);
+       db_run('UPDATE playlist_items SET position=position-1 WHERE playlist_id=? AND position>?',[$source,$index]);
+       db_run('UPDATE playlists SET revision=revision+1 WHERE id=?',[$source]);
+      }
+      db()->commit();
+    }catch(Throwable $e){if(db()->inTransaction())db()->rollBack();if($e instanceof InvalidArgumentException)fail($e->getMessage(),422);if($e instanceof RuntimeException)fail($e->getMessage(),409);throw $e;}
+    audit($org,$u['email'],'playlist.'.$mode,'playlist',(string)$target,['from'=>$source,'position'=>$index]);ok(['mode'=>$mode]);
  case 'playlist.publish':
     $id=(int)($p['id']??0);$targets=$p['screens']??[];
     if(!is_array($targets)||count($targets)<1||count($targets)>500)fail('Selecciona entre 1 y 500 pantallas');
@@ -144,6 +185,24 @@ try{
     $table=$action==='locations.create'?'locations':'display_groups';$name=required($p,'name',120);
     if($table==='locations')db_run('INSERT INTO locations(org_id,name,address) VALUES(?,?,?)',[$org,$name,field($p,'address',255)]);
     else db_run('INSERT INTO display_groups(org_id,name) VALUES(?,?)',[$org,$name]);ok(['id'=>(int)db()->lastInsertId()]);
+ case 'groups.assign':
+    $group=(int)($p['group_id']??0);$targets=$p['screens']??[];
+    if(!is_array($targets)||count($targets)>500)fail('Máximo 500 pantallas',422);
+    if(!db_one('SELECT id FROM display_groups WHERE id=? AND org_id=?',[$group,$org]))fail('Grupo no encontrado',404);
+    foreach($targets as $s)if(!is_string($s)||!preg_match('/^[a-f0-9]{32}$/D',$s)||!db_one('SELECT id FROM screens WHERE id=? AND org_id=? AND paired_at IS NOT NULL',[$s,$org]))fail('Pantalla ajena o inválida',422);
+    db()->beginTransaction();try{
+       db_run('UPDATE screens SET group_id=NULL WHERE org_id=? AND group_id=?',[$org,$group]);
+       foreach(array_unique($targets) as $s)db_run('UPDATE screens SET group_id=? WHERE id=? AND org_id=?',[$group,$s,$org]);
+       db()->commit();
+    }catch(Throwable $e){if(db()->inTransaction())db()->rollBack();throw $e;}
+    audit($org,$u['email'],'group.assign','group',(string)$group,['devices'=>count(array_unique($targets))]);ok(['count'=>count(array_unique($targets))]);
+ case 'groups.command':
+    $group=(int)($p['group_id']??0);$command=field($p,'command',20);
+    if(!in_array($command,['pause','resume','reload','capture'],true))fail('Comando inválido',422);
+    if(!db_one('SELECT id FROM display_groups WHERE id=? AND org_id=?',[$group,$org]))fail('Grupo no encontrado',404);
+    $members=db_all('SELECT id FROM screens WHERE group_id=? AND org_id=? AND paired_at IS NOT NULL LIMIT 500',[$group,$org]);
+    foreach($members as $row)db_run('INSERT INTO screen_commands(screen_id,action,requested_by) VALUES(?,?,?)',[$row['id'],$command,$u['id']]);
+    audit($org,$u['email'],'group.command','group',(string)$group,['command'=>$command,'devices'=>count($members)]);ok(['devices'=>count($members)]);
  case 'screens.list':
     ok(['items'=>db_all('SELECT s.id,s.name,s.location_id,s.group_id,s.orientation,s.last_seen_at,s.last_error,s.paired_at,s.publication_id,s.applied_publication_id,s.last_capture_at, d.telemetry_json, d.updated_at AS telemetry_at, l.name AS location_name,g.name AS group_name, pub.version AS assigned_version, applied.version AS applied_version, (SELECT COUNT(*) FROM screen_commands WHERE screen_id=s.id AND status IN ("queued","delivered")) AS pending_commands FROM screens s LEFT JOIN device_status d ON d.screen_id=s.id LEFT JOIN locations l ON l.id=s.location_id AND l.org_id=s.org_id LEFT JOIN display_groups g ON g.id=s.group_id AND g.org_id=s.org_id LEFT JOIN publications pub ON pub.id=s.publication_id LEFT JOIN publications applied ON applied.id=s.applied_publication_id WHERE s.org_id=? ORDER BY s.name LIMIT 1000',[$org])]);
  case 'screens.pair':

@@ -150,8 +150,8 @@ function normalize_schedule(array $input):array {
     return $out;
 }
 function build_manifest(int $org,int $playlistId):array {
-    $items=db_all('SELECT pi.media_id,pi.position,pi.duration_sec,pi.fit,pi.transition,pi.schedule_json,m.original_name,m.mime,m.sha256,m.bytes FROM playlist_items pi JOIN media m ON m.id=pi.media_id AND m.deleted_at IS NULL JOIN playlists p ON p.id=pi.playlist_id WHERE pi.playlist_id=? AND p.org_id=? ORDER BY pi.position,pi.id',[$playlistId,$org]);
-    return array_map(static function($r){return ['id'=>$r['media_id'],'name'=>$r['original_name'],'mime'=>$r['mime'],'sha256'=>$r['sha256'],'bytes'=>(int)$r['bytes'],'duration'=>(int)$r['duration_sec'],'fit'=>$r['fit'],'transition'=>$r['transition'],'schedule'=>json_decode($r['schedule_json'],true)?:[]];},$items);
+    $items=db_all('SELECT pi.media_id,pi.position,pi.duration_sec,pi.fit,pi.transition,pi.schedule_json,m.original_name,m.mime,m.kind,m.sha256,m.bytes,m.stream_url FROM playlist_items pi JOIN media m ON m.id=pi.media_id AND m.deleted_at IS NULL JOIN playlists p ON p.id=pi.playlist_id WHERE pi.playlist_id=? AND p.org_id=? ORDER BY pi.position,pi.id',[$playlistId,$org]);
+    return array_map(static function($r){return ['id'=>$r['media_id'],'name'=>$r['original_name'],'mime'=>$r['mime'],'kind'=>$r['kind'],'stream_url'=>$r['stream_url'],'sha256'=>$r['sha256'],'bytes'=>(int)$r['bytes'],'duration'=>(int)$r['duration_sec'],'fit'=>$r['fit'],'transition'=>$r['transition'],'schedule'=>json_decode($r['schedule_json'],true)?:[]];},$items);
 }
 function write_playlist(int $org,int $id,array $items,int $revision):array{
     if(count($items)>250)fail('Máximo 250 elementos por lista');
