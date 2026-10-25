@@ -7,6 +7,7 @@ php "$BASE/tests/contracts.php"
 php "$BASE/tests/wall-creatives.php"
 php "$BASE/tests/program-validation.php"
 php "$BASE/tests/audio-contracts.php"
+php "$BASE/tests/integration-health.php"
 if command -v node >/dev/null 2>&1; then
   node --check "$BASE/public/assets/app.js"
   node --check "$BASE/public/assets/player.js"

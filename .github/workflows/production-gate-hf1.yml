@@ -1,0 +1,54 @@
+name: Sector Sign - Production HF1 QA
+on:
+  push:
+    branches: ['feature/production-gate-hf1']
+    paths: ['server/**', '.github/workflows/production-gate-hf1.yml']
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: qa-only-test
+          MYSQL_DATABASE: sector_sign_qa
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pqa-only-test"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql, mbstring, sodium, curl, zip
+          coverage: none
+      - name: Static and contract regressions
+        run: |
+          set -euo pipefail
+          sh server/tests/qa.sh
+          python3 scripts/verificar-versiones.py
+      - name: Isolated MySQL tests
+        env:
+          SECTOR_SIGN_QA: '1'
+        run: |
+          set -euo pipefail
+          php server/tests/ci-setup.php
+          php server/tests/mysql-smoke.php --run
+          php server/tools/upgrade.php --apply
+          php server/tools/upgrade.php --apply
+          php server/tools/production-preflight.php --json > /tmp/preflight.json || test $? -eq 1
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/preflight.json'))
+          assert isinstance(r['checks'],list) and r['blockers']>=1
+          print('Preflight reports QA missing production requirements without exposing secrets')
+          PY
+          php -S 127.0.0.1:8787 -t server/public >/tmp/ss-qa-php.log 2>&1 &
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:8787/player.php >/dev/null && break; sleep 1; done
+          python3 server/tests/program-http.py
