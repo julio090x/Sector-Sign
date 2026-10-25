@@ -1,0 +1,124 @@
+name: Sector Sign - Audiovisual 0.9.0 integration
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.update/**'
+      - '.github/workflows/apply-audio-0.9.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  apply-test-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 28
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: qa-only-test
+          MYSQL_DATABASE: sector_sign_qa
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pqa-only-test"
+          --health-interval=10s --health-timeout=5s --health-retries=12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Apply verified patch, clean staging, publish real source
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE=".update/v0.9-core.patch.xz"
+          if [ -f "$FILE" ]; then
+            echo '363793c6314705503659ade608759739a876bb872fe2ea08143f594e0cd9b2f7  .update/v0.9-core.patch.xz' | sha256sum -c -
+            xz -dc "$FILE" > "$RUNNER_TEMP/sector-sign-0.9.patch"
+            git apply --check --whitespace=nowarn "$RUNNER_TEMP/sector-sign-0.9.patch"
+            git apply --whitespace=nowarn "$RUNNER_TEMP/sector-sign-0.9.patch"
+            for file in app.js app.css player.js player.css; do
+              cp "server/public/assets/$file" "angular-unificado/legacy-assets/assets/$file"
+            done
+            python3 - <<'PY'
+          from pathlib import Path
+          for name in ('README.md','LEEME-PRIMERO.md'):
+              p=Path(name)
+              if p.is_file():
+                  p.write_text(p.read_text().replace('Sector Sign 0.8.0','Sector Sign 0.9.0') + "\n\n**Estudio AV 0.9:** imágenes y videos con pistas de sonido, música por lista, bot lector es-PE/es-ES/en-US/pt-BR, exportación HTML/ZIP offline con audio y APK receptor TextToSpeech. Tras actualización, ejecuta migración SQL y prueba tu dispositivo. Las voces del dispositivo no se exportan como MP4 automáticamente.\n")
+          Path('documentacion/CAMBIOS-0.9.0.md').write_text('# Sector Sign 0.9.0\n\n- Audio MP3/WAV/OGG/M4A por anuncio y música de fondo por lista.\n- Cartel con narración automática, idioma, velocidad y subtítulos.\n- Vista previa audiovisual y descarga HTML/ZIP offline con audio.\n- Receptor Android con puente TextToSpeech.\n- MySQL: audio_json, soundtrack_json y kind audio. Ejecuta php server/tools/upgrade.php --apply después de respaldar.\n- WebM desde demo local con pistas subidas (la voz TTS no se captura).\n- PILOTO: validar voces offline, códecs y sonido en el H96; no se certificó producción.\n')
+          PY
+            git rm -r .update
+            git add -A
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git commit -m 'Sector Sign 0.9.0: audiovisual studio, layered audio and spoken posters'
+            git push origin HEAD:main
+          else
+            test -f server/private/audio.php
+          fi
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_mysql,mbstring,sodium,curl,zip
+          coverage: none
+      - name: Static tests and version checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p qa-results
+          sh server/tests/qa.sh | tee qa-results/static.txt
+          python3 scripts/verificar-versiones.py | tee qa-results/version.txt
+      - name: Real MySQL and HTTP integration (disposable QA only)
+        shell: bash
+        env:
+          SECTOR_SIGN_QA: '1'
+        run: |
+          set -euo pipefail
+          php server/tests/ci-setup.php | tee qa-results/mysql-setup.txt
+          php server/tests/mysql-smoke.php --run | tee qa-results/mysql.txt
+          php server/tools/upgrade.php --apply | tee qa-results/upgrade.txt
+          php server/tools/upgrade.php --apply | tee -a qa-results/upgrade.txt
+          php -S 127.0.0.1:8787 -t server/public > qa-results/http-server.log 2>&1 &
+          for i in $(seq 1 30); do curl -fs http://127.0.0.1:8787/player.php >/dev/null && break; sleep 1; done
+          python3 server/tests/program-http.py | tee qa-results/http.txt
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.10.2'
+      - name: Install Android SDK
+        run: sdkmanager 'platform-tools' 'platforms;android-35' 'build-tools;35.0.0'
+      - name: Build two Android apps and verify debug signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd android-unificado
+          gradle --no-daemon :app:assembleCentroDebug :app:assembleReceptorDebug :app:assembleCentroRelease :app:assembleReceptorRelease
+          cd ..
+          mkdir -p deliverables/signed-evaluation deliverables/unsigned
+          for app in centro receptor; do
+            debug=$(find android-unificado/app/build/outputs/apk/$app/debug -name '*.apk' -print -quit)
+            release=$(find android-unificado/app/build/outputs/apk/$app/release -name '*.apk' -print -quit)
+            "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$debug"
+            "$ANDROID_HOME/build-tools/35.0.0/zipalign" -c 4 "$release"
+            cp "$debug" "deliverables/signed-evaluation/SectorSign-$app-0.9.0-debug.apk"
+            cp "$release" "deliverables/unsigned/SectorSign-$app-0.9.0-unsigned.apk"
+          done
+          find deliverables -type f -exec sha256sum {} \; > deliverables/SHA256.txt
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: SectorSign-QA-0.9.0
+          path: qa-results/
+          retention-days: 30
+          if-no-files-found: warn
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SectorSign-Android-0.9.0
+          path: deliverables/
+          retention-days: 30
+          if-no-files-found: error
