@@ -14,7 +14,8 @@ try{
  $pubIdx=db_all('SHOW INDEX FROM publications');if(!in_array('uniq_pub_playlist_version',array_column($pubIdx,'Key_name'),true))$changes[]='ALTER TABLE publications ADD UNIQUE KEY uniq_pub_playlist_version(playlist_id,version)';
  $rows=db_all('SHOW TABLES');$tables=array_map(fn($r)=>(string)array_values($r)[0],$rows);
  $mediaCols=db_all('SHOW COLUMNS FROM media');$mediaNames=array_column($mediaCols,'Field');
- $mediaKind=next(array_filter($mediaCols,static fn($col)=>$col['Field']==='kind'));
+ $mediaMatch=array_values(array_filter($mediaCols,static fn($col)=>$col['Field']==='kind'));
+ $mediaKind=$mediaMatch[0]??[];
  if(!str_contains((string)($mediaKind['Type']??''),"'audio'"))$changes[]="ALTER TABLE media MODIFY COLUMN kind ENUM('image','video','audio','stream') NOT NULL";
  if(!in_array('stream_url',$mediaNames,true))$changes[]='ALTER TABLE media ADD COLUMN stream_url TEXT NULL';
  $playlistColumns=array_column(db_all('SHOW COLUMNS FROM playlists'),'Field');
