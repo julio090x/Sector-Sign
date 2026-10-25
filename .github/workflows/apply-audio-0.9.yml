@@ -77,7 +77,9 @@ jobs:
           php server/tests/ci-setup.php | tee qa-results/mysql-setup.txt
           php server/tests/mysql-smoke.php --run | tee qa-results/mysql.txt
           php server/tools/upgrade.php --apply | tee qa-results/upgrade.txt
-          php server/tools/upgrade.php --apply | tee -a qa-results/upgrade.txt
+          SECOND=$(php server/tools/upgrade.php --apply)
+          echo "$SECOND" | tee -a qa-results/upgrade.txt
+          echo "$SECOND" | grep -q 'Base actualizada: no hay cambios pendientes'
           php -S 127.0.0.1:8787 -t server/public > qa-results/http-server.log 2>&1 &
           for i in $(seq 1 30); do curl -fs http://127.0.0.1:8787/player.php >/dev/null && break; sleep 1; done
           python3 server/tests/program-http.py | tee qa-results/http.txt
