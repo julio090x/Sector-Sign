@@ -34,6 +34,8 @@ jobs:
             xz -dc "$FILE" > "$RUNNER_TEMP/sector-sign-0.9.patch"
             git apply --check --whitespace=nowarn "$RUNNER_TEMP/sector-sign-0.9.patch"
             git apply --whitespace=nowarn "$RUNNER_TEMP/sector-sign-0.9.patch"
+            # Actions tokens cannot change workflow files; commit application sources only.
+            git restore --source=HEAD -- .github/workflows/build-two-android-apps.yml
             for file in app.js app.css player.js player.css; do
               cp "server/public/assets/$file" "angular-unificado/legacy-assets/assets/$file"
             done
