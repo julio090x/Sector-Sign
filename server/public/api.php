@@ -2,6 +2,7 @@
 declare(strict_types=1);
 require __DIR__.'/../private/bootstrap.php';
 require __DIR__.'/../private/inventory.php';
+require __DIR__.'/../private/integration-health.php';
 $action=(string)($_GET['action']??$_POST['action']??'');
 $method=(string)($_SERVER['REQUEST_METHOD']??'GET');
 $readOnlyActions=['health','auth.me','dashboard','media.list','playlists.list','playlist.get','screens.list','groups.list','locations.list','catalog.list','users.list','audit.list','integrations.list','settings.get','backup.info','system.diagnostics','system.release','programs.list','walls.list','player.sync'];
