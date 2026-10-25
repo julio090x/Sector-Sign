@@ -1,5 +1,5 @@
 <?php
-// Incremental upgrade to 0.8.0; CLI only, run with full backup and --apply.
+// Incremental upgrade to 0.9.0; CLI only, run with full backup and --apply.
 declare(strict_types=1);
 if(PHP_SAPI!=='cli') {http_response_code(403);exit('Solo CLI');}
 require __DIR__.'/../private/bootstrap.php';
@@ -15,13 +15,17 @@ try{
  $rows=db_all('SHOW TABLES');$tables=array_map(fn($r)=>(string)array_values($r)[0],$rows);
  $mediaCols=db_all('SHOW COLUMNS FROM media');$mediaNames=array_column($mediaCols,'Field');
  $mediaKind=next(array_filter($mediaCols,static fn($col)=>$col['Field']==='kind'));
- if(!str_contains((string)($mediaKind['Type']??''),"'stream'"))$changes[]="ALTER TABLE media MODIFY COLUMN kind ENUM('image','video','stream') NOT NULL";
+ if(!str_contains((string)($mediaKind['Type']??''),"'audio'"))$changes[]="ALTER TABLE media MODIFY COLUMN kind ENUM('image','video','audio','stream') NOT NULL";
  if(!in_array('stream_url',$mediaNames,true))$changes[]='ALTER TABLE media ADD COLUMN stream_url TEXT NULL';
+ $playlistColumns=array_column(db_all('SHOW COLUMNS FROM playlists'),'Field');
+ $itemColumns=array_column(db_all('SHOW COLUMNS FROM playlist_items'),'Field');
+ if(!in_array('soundtrack_json',$playlistColumns,true))$changes[]='ALTER TABLE playlists ADD COLUMN soundtrack_json LONGTEXT NULL';
+ if(!in_array('audio_json',$itemColumns,true))$changes[]='ALTER TABLE playlist_items ADD COLUMN audio_json LONGTEXT NULL';
  $newSql=file_get_contents(__DIR__.'/../sql/upgrade-0.6-to-0.7.mysql.sql')."\n".file_get_contents(__DIR__.'/../sql/upgrade-0.7-to-0.8.mysql.sql');
  $newSql=preg_replace('/^--.*$/m','',$newSql);
  foreach(explode(';',$newSql) as $sql){$sql=trim($sql);if(preg_match('/^CREATE TABLE IF NOT EXISTS (\w+)/',$sql,$m)&&!in_array($m[1],$tables,true))$changes[]=$sql;}
  if(!$changes){echo "Base actualizada: no hay cambios pendientes.\n";exit(0);}
  if(!$do){echo "Cambios pendientes (respalda antes):\n".implode("\n",$changes)."\nEjecuta: php tools/upgrade.php --apply\n";exit(2);}
  foreach($changes as $sql){db()->exec($sql);echo "APLICADO: {$sql}\n";}
- echo "Actualización 0.8 completada.\n";
+ echo "Actualización 0.9 completada.\n";
 }catch(Throwable $e){fwrite(STDERR,"ERROR DE MIGRACIÓN: ".$e->getMessage()."\n");exit(1);}

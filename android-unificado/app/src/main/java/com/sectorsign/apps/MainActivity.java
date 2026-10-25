@@ -28,6 +28,9 @@ import android.net.Uri;
 import android.webkit.ValueCallback;
 import android.webkit.WebResourceError;
 import android.os.Build;
+import android.webkit.JavascriptInterface;
+import android.speech.tts.TextToSpeech;
+
 
 import java.net.URI;
 import java.util.Locale;
@@ -35,12 +38,13 @@ import java.util.Locale;
 /**
  * The two installable products share the SAME web UI and server code.
  * Only their app identifiers and entry routes differ by Gradle product flavor.
- * No JavaScript-to-native bridge, no password exposure, no skipped TLS checks.
+ * Only a narrow voice bridge is exposed to the first-party player WebView. No password exposure or skipped TLS checks.
  */
 public final class MainActivity extends Activity {
     private static final String SETTINGS = "sector_sign_settings";
     private static final String URL_KEY = "server_url";
     private WebView webView;
+    private TextToSpeech voiceEngine;
     private String expectedHost;
     private String expectedScheme;
     private int expectedPort;
@@ -143,6 +147,23 @@ public final class MainActivity extends Activity {
         fullscreen();
     }
 
+    /** Browser Web Speech is not dependable across Android TV models; native TTS falls back to installed system voices. */
+    private final class VoiceBridge {
+        @JavascriptInterface public void speak(String text, String lang, double speed) {
+            if (!BuildConfig.IS_PLAYER || text==null || text.length()>750) return;
+            runOnUiThread(() -> {
+                if (voiceEngine==null) return;
+                Locale requested=Locale.forLanguageTag(lang==null?"es-PE":lang);
+                voiceEngine.setLanguage(requested);
+                voiceEngine.setSpeechRate((float)Math.max(0.65,Math.min(1.5,speed)));
+                voiceEngine.speak(text,TextToSpeech.QUEUE_FLUSH,null,"sector-sign-narration");
+            });
+        }
+        @JavascriptInterface public void stop() {
+            runOnUiThread(() -> { if (voiceEngine!=null) voiceEngine.stop(); });
+        }
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     private void openProduct(String url) {
         try {
@@ -165,6 +186,13 @@ public final class MainActivity extends Activity {
         s.setJavaScriptCanOpenWindowsAutomatically(false);
         s.setSupportMultipleWindows(false);
         s.setMediaPlaybackRequiresUserGesture(!BuildConfig.IS_PLAYER);
+        if (BuildConfig.IS_PLAYER) {
+            voiceEngine = new TextToSpeech(this, status -> {
+                if (status != TextToSpeech.SUCCESS) android.util.Log.w("SectorSign", "Voz Android no disponible");
+            });
+            // Only load same-origin pages. The bridge exposes speak/stop only; never tokens or files.
+            webView.addJavascriptInterface(new VoiceBridge(), "SectorVoice");
+        }
         s.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         if (android.os.Build.VERSION.SDK_INT >= 26) s.setSafeBrowsingEnabled(true);
         webView.setWebChromeClient(new WebChromeClient() {
@@ -174,7 +202,7 @@ public final class MainActivity extends Activity {
                 fileSelection=callback;
                 Intent pick=new Intent(Intent.ACTION_OPEN_DOCUMENT);
                 pick.addCategory(Intent.CATEGORY_OPENABLE);pick.setType("*/*");
-                pick.putExtra(Intent.EXTRA_MIME_TYPES,new String[]{"image/*","video/*"});
+                pick.putExtra(Intent.EXTRA_MIME_TYPES,new String[]{"image/*","video/*","audio/*"});
                 pick.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);
                 try{startActivityForResult(pick,PICK_MEDIA);}catch(Exception e){fileSelection.onReceiveValue(null);fileSelection=null;}
                 return true;
@@ -221,7 +249,7 @@ public final class MainActivity extends Activity {
         showSetup(getSharedPreferences(SETTINGS, MODE_PRIVATE).getString(URL_KEY, ""));
     }
     @Override public void onResume() { super.onResume(); fullscreen(); if (webView != null) webView.onResume(); }
-    @Override public void onPause() { if (webView != null) webView.onPause(); super.onPause(); }
+    @Override public void onPause() { if (voiceEngine!=null)voiceEngine.stop(); if (webView != null) webView.onPause(); super.onPause(); }
     @Override public void onConfigurationChanged(Configuration cfg) { super.onConfigurationChanged(cfg); fullscreen(); }
-    @Override public void onDestroy() { if(fileSelection!=null){fileSelection.onReceiveValue(null);fileSelection=null;} if (webView != null) { webView.destroy(); webView = null; } super.onDestroy(); }
+    @Override public void onDestroy() { if(voiceEngine!=null){voiceEngine.shutdown();voiceEngine=null;} if(fileSelection!=null){fileSelection.onReceiveValue(null);fileSelection=null;} if (webView != null) { webView.destroy(); webView = null; } super.onDestroy(); }
 }

@@ -1,15 +1,13 @@
 {
-  "version": "0.8.0",
-  "released_at": "2026-10-24T13:53:22Z",
+  "version": "0.9.0",
+  "released_at": "2026-10-24T23:00:00Z",
   "channel": "beta",
-  "android_version_code": 8,
+  "android_version_code": 9,
   "changes": [
-    "Biblioteca publicitaria con carga múltiple de imágenes y videos mediante arrastrar y soltar.",
-    "Mover o copiar anuncios entre listas, con control de versiones y bloqueo de ediciones concurrentes.",
-    "Grupos de pantallas por local: campañas independientes y controles remotos en conjunto.",
-    "Videowalls de 1 a 16 pantallas: modo espejo o mural panorámico en mosaico, sincronización aproximada.",
-    "Intros publicitarias Full HD generadas con texto personalizable y paletas de color.",
-    "Reproducción de fuentes en directo HTTPS MP4/HLS cuando el dispositivo lo admita (requiere internet).",
-    "Integración comercial firmada compatible con Inventario Pro 360, pendiente de conectar al ZIP vigente real."
+    "Estudio audiovisual: clips con pistas MP3/WAV/OGG/M4A independientes, volumen y mezcla de audio con video.",
+    "Música de fondo en bucle por lista; voz narrada por cartel con español Perú, inglés y portugués.",
+    "Narración Android mediante TextToSpeech del equipo y alternativa Web Speech donde esté disponible.",
+    "Audio guardado con las campañas offline, validado y descargado antes de activar la publicación.",
+    "Editor con previsualización audiovisual, controles táctiles y opción de lectura por cartel."
   ]
 }

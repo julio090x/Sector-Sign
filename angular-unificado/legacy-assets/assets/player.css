@@ -5,3 +5,5 @@
 #last-contact,#current-publication{font-weight:700;color:#e4f1ff}
 #software-updated{font-weight:700;color:#e4f1ff}
 @media(max-width:420px){#control-panel{flex-wrap:wrap;align-content:center}#control-info{display:flex;flex-wrap:wrap;gap:5px}#player-build{font-size:9px}.settings-card{max-height:90dvh;overflow:auto;padding:19px}}
+
+#narrator-caption{position:fixed;bottom:55px;left:5%;right:5%;max-height:26vh;overflow:hidden;text-align:center;color:white;font-size:clamp(17px,2.4vw,36px);line-height:1.3;font-weight:800;letter-spacing:.01em;z-index:2;text-shadow:0 3px 6px #000,0 0 15px #000b;pointer-events:none}#narrator-caption:empty{display:none}@media(max-width:550px){#narrator-caption{bottom:65px;font-size:17px}}

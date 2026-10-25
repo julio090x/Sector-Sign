@@ -1,4 +1,4 @@
-# Sector Sign 0.8.0 — Comienza aquí
+# Sector Sign 0.9.0 — Comienza aquí
 
 **Dos aplicaciones: Centro de Mando y Reproductor.** Un único servidor PHP/MySQL en aaPanel, sin Node.js en producción. Android, Windows, macOS y tablet usan interfaces web/PWA compartidas; Angular sigue en migración parcial.
 
@@ -33,3 +33,6 @@ Crea la integración desde **Inventario** en el panel. El ZIP de conector incluy
 - El navegador de pruebas de esta sesión bloqueó acceso a localhost incluso con rutas interceptadas; no se declara una prueba visual automática real de 0.8.
 
 Consulta `documentacion/CAMBIOS-0.8.0.md`, `ACTUALIZAR-0.7-A-0.8.md` y `REPORTE-QA-0.8.0.md` para detalles.
+
+
+**Estudio AV 0.9:** imágenes y videos con pistas de sonido, música por lista, bot lector es-PE/es-ES/en-US/pt-BR, exportación HTML/ZIP offline con audio y APK receptor TextToSpeech. Tras actualización, ejecuta migración SQL y prueba tu dispositivo. Las voces del dispositivo no se exportan como MP4 automáticamente.

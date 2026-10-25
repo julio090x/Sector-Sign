@@ -6,6 +6,7 @@ echo 'PASS: sintaxis de todos los PHP'
 php "$BASE/tests/contracts.php"
 php "$BASE/tests/wall-creatives.php"
 php "$BASE/tests/program-validation.php"
+php "$BASE/tests/audio-contracts.php"
 if command -v node >/dev/null 2>&1; then
   node --check "$BASE/public/assets/app.js"
   node --check "$BASE/public/assets/player.js"

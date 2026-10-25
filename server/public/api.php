@@ -81,10 +81,11 @@ try{
     if((int)$file['error']!==UPLOAD_ERR_OK)fail('No se pudo recibir el archivo. Revisa post_max_size/upload_max_filesize.');
     if($file['size']>$max||$file['size']<=0)fail('Archivo demasiado grande (máximo 150 MB)');
     $mime=(new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);$kind=allow_mime($mime);
-    if(!$kind)fail('Tipo no permitido: usa JPG, PNG, WebP, GIF, MP4 o WebM');
+    if(!$kind)fail('Tipo no permitido: usa JPG, PNG, WebP, GIF, MP4, WebM, MP3, WAV, OGG o M4A');
     if($kind==='image' && !@getimagesize($file['tmp_name']))fail('La imagen está dañada o no es válida');
+    if($kind==='audio' && $file['size']>50*1024*1024)fail('El audio no puede superar 50 MB',413);
     $name=basename((string)$file['name']);$name=mb_substr(preg_replace('/[\x00-\x1F\x7F]/u','',$name)?:'archivo',0,190);
-    $id=pkid();$ext=['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp','image/gif'=>'gif','video/mp4'=>'mp4','video/webm'=>'webm'][$mime];
+    $id=pkid();$ext=['image/jpeg'=>'jpg','image/png'=>'png','image/webp'=>'webp','image/gif'=>'gif','video/mp4'=>'mp4','video/webm'=>'webm','audio/mpeg'=>'mp3','audio/mp3'=>'mp3','audio/wav'=>'wav','audio/x-wav'=>'wav','audio/wave'=>'wav','audio/ogg'=>'ogg','application/ogg'=>'ogg','audio/mp4'=>'m4a','audio/x-m4a'=>'m4a','audio/aac'=>'aac'][$mime];
     $stored=$id.'.'.$ext;$destination=media_dir().'/'.$stored;
     if(!move_uploaded_file($file['tmp_name'],$destination))fail('No se pudo guardar el archivo',500);
     @chmod($destination,0640);
@@ -116,6 +117,9 @@ try{
  case 'media.delete':
     $id=required($p,'id',32);$used=db_one('SELECT COUNT(*) AS c FROM playlist_items pi JOIN playlists pl ON pl.id=pi.playlist_id WHERE pi.media_id=? AND pl.org_id=?',[$id,$org]);
     if((int)$used['c']>0)fail('Retira el archivo de todas las listas antes de eliminarlo',409);
+    $audioUses=db_one('SELECT COUNT(*) c FROM playlist_items pi JOIN playlists pl ON pl.id=pi.playlist_id WHERE pl.org_id=? AND pi.audio_json LIKE ?',[$org,'%"'.$id.'"%']);
+    $musicUses=db_one('SELECT COUNT(*) c FROM playlists WHERE org_id=? AND soundtrack_json LIKE ?',[$org,'%"'.$id.'"%']);
+    if((int)($audioUses['c']??0)+(int)($musicUses['c']??0)>0)fail('El audio está asignado a una lista. Quítalo antes de eliminarlo.',409);
     $historical=db_one('SELECT COUNT(*) c FROM publications WHERE org_id=? AND manifest_json LIKE ?',[$org,'%"id":"'.$id.'"%']);
     if((int)($historical['c']??0)>0)fail('Este archivo pertenece a una publicación histórica; no puede borrarse mientras los reproductores puedan necesitarla.',409);
     db_run('UPDATE media SET deleted_at=UTC_TIMESTAMP() WHERE id=? AND org_id=?',[$id,$org]);audit($org,$u['email'],'media.delete','media',$id);ok();
@@ -127,15 +131,15 @@ try{
     $id=(int)($p['id']??0);$name=required($p,'name',160);if(!db_run('UPDATE playlists SET name=? WHERE id=? AND org_id=?',[$name,$id,$org]))fail('Lista no encontrada',404);ok();
  case 'playlist.get':
     $id=(int)($_GET['id']??0);$row=db_one('SELECT * FROM playlists WHERE id=? AND org_id=?',[$id,$org]);if(!$row)fail('Lista no encontrada',404);
-    ok(['playlist'=>$row,'items'=>build_manifest($org,$id)]);
+    ok(['playlist'=>$row,'items'=>build_manifest($org,$id),'soundtrack'=>json_decode((string)($row['soundtrack_json']??''),true)?:[]]);
  case 'playlist.save':
     $id=(int)($p['id']??0);$items=$p['items']??[];if(!is_array($items))fail('Lista inválida');
-    $saved=write_playlist($org,$id,$items,(int)($p['revision']??0));audit($org,$u['email'],'playlist.save','playlist',(string)$id);ok($saved);
+    $saved=write_playlist($org,$id,$items,(int)($p['revision']??0),$p['soundtrack']??[]);audit($org,$u['email'],'playlist.save','playlist',(string)$id);ok($saved);
  case 'playlists.duplicate':
     $id=(int)($p['id']??0);$base=db_one('SELECT * FROM playlists WHERE id=? AND org_id=?',[$id,$org]);if(!$base)fail('Lista no encontrada',404);
     db()->beginTransaction();try{
-      db_run('INSERT INTO playlists(org_id,name,description) VALUES(?,?,?)',[$org,mb_substr($base['name'].' (copia)',0,160),$base['description']]);$new=(int)db()->lastInsertId();
-      db_run('INSERT INTO playlist_items(playlist_id,media_id,position,duration_sec,fit,transition,schedule_json) SELECT ?,media_id,position,duration_sec,fit,transition,schedule_json FROM playlist_items WHERE playlist_id=?',[$new,$id]);db()->commit();
+      db_run('INSERT INTO playlists(org_id,name,description,soundtrack_json) VALUES(?,?,?,?)',[$org,mb_substr($base['name'].' (copia)',0,160),$base['description'],$base['soundtrack_json']]);$new=(int)db()->lastInsertId();
+      db_run('INSERT INTO playlist_items(playlist_id,media_id,position,duration_sec,fit,transition,schedule_json,audio_json) SELECT ?,media_id,position,duration_sec,fit,transition,schedule_json,audio_json FROM playlist_items WHERE playlist_id=?',[$new,$id]);db()->commit();
     }catch(Throwable $e){if(db()->inTransaction())db()->rollBack();throw $e;}
     audit($org,$u['email'],'playlist.duplicate','playlist',(string)$new);ok(['id'=>$new]);
  case 'playlists.delete':
@@ -152,7 +156,7 @@ try{
       if((int)$locked[$source]['revision']!==(int)($p['source_revision']??-1)||(int)$locked[$target]['revision']!==(int)($p['target_revision']??-1))throw new RuntimeException('Las listas cambiaron en otra sesión. Vuelve a abrirlas.');
       $item=db_one('SELECT * FROM playlist_items WHERE playlist_id=? AND position=? FOR UPDATE',[$source,$index]);if(!$item)throw new InvalidArgumentException('El anuncio ya no está en esta posición');
       $n=(int)(db_one('SELECT COUNT(*) n FROM playlist_items WHERE playlist_id=?',[$target])['n']??0);if($n>=250)throw new InvalidArgumentException('La lista destino alcanzó 250 anuncios');
-      db_run('INSERT INTO playlist_items(playlist_id,media_id,position,duration_sec,fit,transition,schedule_json) VALUES(?,?,?,?,?,?,?)',[$target,$item['media_id'],$n,$item['duration_sec'],$item['fit'],$item['transition'],$item['schedule_json']]);
+      db_run('INSERT INTO playlist_items(playlist_id,media_id,position,duration_sec,fit,transition,schedule_json,audio_json) VALUES(?,?,?,?,?,?,?,?)',[$target,$item['media_id'],$n,$item['duration_sec'],$item['fit'],$item['transition'],$item['schedule_json'],$item['audio_json']]);
       db_run('UPDATE playlists SET revision=revision+1 WHERE id=?',[$target]);
       if($mode==='move'){
        db_run('DELETE FROM playlist_items WHERE id=? AND playlist_id=?',[$item['id'],$source]);
@@ -171,7 +175,7 @@ try{
        if(!$row){db()->rollBack();fail('Lista no encontrada',404);}
        $manifest=build_manifest($org,$id);if(!$manifest){db()->rollBack();fail('La lista no contiene anuncios válidos');}
        $version=(int)(db_one('SELECT MAX(version) AS n FROM publications WHERE playlist_id=? AND org_id=?',[$id,$org])['n']??0)+1;
-       db_run('INSERT INTO publications(org_id,playlist_id,version,manifest_json,created_by) VALUES(?,?,?,?,?)',[$org,$id,$version,json_encode(['name'=>$row['name'],'items'=>$manifest],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),(int)$u['id']]);$pub=(int)db()->lastInsertId();
+       db_run('INSERT INTO publications(org_id,playlist_id,version,manifest_json,created_by) VALUES(?,?,?,?,?)',[$org,$id,$version,json_encode(['name'=>$row['name'],'items'=>$manifest,'soundtrack'=>playlist_soundtrack($org,$id),'audio_assets'=>audio_assets($org,$manifest,playlist_soundtrack($org,$id))],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES),(int)$u['id']]);$pub=(int)db()->lastInsertId();
        $count=0;foreach(array_unique(array_map('strval',$targets)) as $screen){
           if(!preg_match('/^[a-f0-9]{32}$/',$screen)||!db_one('SELECT id FROM screens WHERE id=? AND org_id=? AND paired_at IS NOT NULL',[$screen,$org]))throw new RuntimeException('Una de las pantallas seleccionadas no está disponible');
           $count+=db_run('UPDATE screens SET publication_id=? WHERE id=? AND org_id=? AND paired_at IS NOT NULL',[$pub,$screen,$org]);

@@ -26,7 +26,7 @@ checks={
  'Heartbeat throttle': 'INTERVAL 15 SECOND' in (root/'server/private/player-api.php').read_text(),
  'Player 5s adaptive sync': 'scheduleSync(lastSync?5000:' in player,
  'Center 8s near-realtime': 'scheduleLivePoll' in app,
- 'SW versioned shell':'sector-sign-player-shell-v080' in sw,
+ 'SW versioned shell':'sector-sign-player-shell-v090' in sw,
  'Android two apps':all(x in gradle for x in ['centro {','receptor {','com.sectorsign.centro','com.sectorsign.receptor']),
  'GitHub two APK artifacts':all(x in workflow for x in ['assembleCentroDebug','assembleReceptorDebug','upload-artifact']),
 }

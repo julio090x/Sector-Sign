@@ -1,4 +1,4 @@
-# Sector Sign 0.8.0 · Plataforma de cartelería digital
+# Sector Sign 0.9.0 · Plataforma de cartelería digital
 
 Dos aplicaciones compartiendo PHP/MySQL en aaPanel: **Centro de Mando** (web/Android) y **Reproductor** (TV Stick, Android, navegador/PWA). No requiere Node.js, Composer ni Docker en el servidor. El workspace Angular/TypeScript es de migración parcial; la interfaz web PHP/JavaScript sigue siendo la que está operativa.
 
@@ -26,3 +26,6 @@ python scripts/verificar-versiones.py
 ```
 
 **Entrega preparada para piloto, no certificada de producción.** El usuario debe configurar aaPanel, S3/FTP o Google Drive, OAuth, exportador de Inventario Pro y probar el equipo H96. Consulte `LEEME-PRIMERO.md`.
+
+
+**Estudio AV 0.9:** imágenes y videos con pistas de sonido, música por lista, bot lector es-PE/es-ES/en-US/pt-BR, exportación HTML/ZIP offline con audio y APK receptor TextToSpeech. Tras actualización, ejecuta migración SQL y prueba tu dispositivo. Las voces del dispositivo no se exportan como MP4 automáticamente.

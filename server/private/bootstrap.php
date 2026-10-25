@@ -109,7 +109,7 @@ function log_error(Throwable $e):void {
     error_log('[SectorSign] '.$e->getMessage().' '.$e->getFile().':'.$e->getLine());
 }
 function allow_mime(string $mime):?string {
-    return match($mime){'image/jpeg','image/png','image/webp','image/gif'=>'image','video/mp4','video/webm'=>'video', default=>null};
+    return match($mime){'image/jpeg','image/png','image/webp','image/gif'=>'image','video/mp4','video/webm'=>'video', 'audio/mpeg','audio/mp3','audio/wav','audio/x-wav','audio/wave','audio/ogg','application/ogg','audio/mp4','audio/x-m4a','audio/aac'=>'audio', default=>null};
 }
 function media_dir():string {$dir=dirname(__DIR__).'/storage/media';if(!is_dir($dir))mkdir($dir,0750,true);return $dir;}
 function capture_dir():string {$dir=dirname(__DIR__).'/storage/captures';if(!is_dir($dir))mkdir($dir,0750,true);return $dir;}
@@ -150,10 +150,10 @@ function normalize_schedule(array $input):array {
     return $out;
 }
 function build_manifest(int $org,int $playlistId):array {
-    $items=db_all('SELECT pi.media_id,pi.position,pi.duration_sec,pi.fit,pi.transition,pi.schedule_json,m.original_name,m.mime,m.kind,m.sha256,m.bytes,m.stream_url FROM playlist_items pi JOIN media m ON m.id=pi.media_id AND m.deleted_at IS NULL JOIN playlists p ON p.id=pi.playlist_id WHERE pi.playlist_id=? AND p.org_id=? ORDER BY pi.position,pi.id',[$playlistId,$org]);
-    return array_map(static function($r){return ['id'=>$r['media_id'],'name'=>$r['original_name'],'mime'=>$r['mime'],'kind'=>$r['kind'],'stream_url'=>$r['stream_url'],'sha256'=>$r['sha256'],'bytes'=>(int)$r['bytes'],'duration'=>(int)$r['duration_sec'],'fit'=>$r['fit'],'transition'=>$r['transition'],'schedule'=>json_decode($r['schedule_json'],true)?:[]];},$items);
+    $items=db_all('SELECT pi.media_id,pi.position,pi.duration_sec,pi.fit,pi.transition,pi.schedule_json,pi.audio_json,m.original_name,m.mime,m.kind,m.sha256,m.bytes,m.stream_url FROM playlist_items pi JOIN media m ON m.id=pi.media_id AND m.deleted_at IS NULL JOIN playlists p ON p.id=pi.playlist_id WHERE pi.playlist_id=? AND p.org_id=? ORDER BY pi.position,pi.id',[$playlistId,$org]);
+    return array_map(static function($r){return ['id'=>$r['media_id'],'name'=>$r['original_name'],'mime'=>$r['mime'],'kind'=>$r['kind'],'stream_url'=>$r['stream_url'],'sha256'=>$r['sha256'],'bytes'=>(int)$r['bytes'],'duration'=>(int)$r['duration_sec'],'fit'=>$r['fit'],'transition'=>$r['transition'],'schedule'=>json_decode($r['schedule_json'],true)?:[],'audio'=>json_decode((string)($r['audio_json']??''),true)?:[]];},$items);
 }
-function write_playlist(int $org,int $id,array $items,int $revision):array{
+function write_playlist(int $org,int $id,array $items,int $revision,array $soundtrack=[]):array{
     if(count($items)>250)fail('Máximo 250 elementos por lista');
     db()->beginTransaction();try{
         $row=db_one('SELECT id,revision FROM playlists WHERE id=? AND org_id=? FOR UPDATE',[$id,$org]);
@@ -164,14 +164,17 @@ function write_playlist(int $org,int $id,array $items,int $revision):array{
         foreach($items as $item){
             if(!is_array($item))continue;
             $media=field($item,'id',32);
-            $exists=db_one('SELECT id FROM media WHERE id=? AND org_id=? AND deleted_at IS NULL',[$media,$org]);if(!$exists){db()->rollBack();fail('Archivo no encontrado: '.$media,422);}
+            $exists=db_one('SELECT id,kind FROM media WHERE id=? AND org_id=? AND deleted_at IS NULL',[$media,$org]);if($exists&&$exists['kind']==='audio')fail('El audio se añade como pista, no como diapositiva',422);if(!$exists){db()->rollBack();fail('Archivo no encontrado: '.$media,422);}
             $duration=max(2,min(600,(int)($item['duration']??8)));
             $fit=in_array($item['fit']??'contain',['contain','cover'],true)?$item['fit']:'contain';
             $transition=in_array($item['transition']??'fade',['fade','slide','none'],true)?$item['transition']:'fade';
             $schedule=normalize_schedule(is_array($item['schedule']??null)?$item['schedule']:[]);
-            db_run('INSERT INTO playlist_items(playlist_id,media_id,position,duration_sec,fit,transition,schedule_json) VALUES(?,?,?,?,?,?,?)',[$id,$media,$pos++,$duration,$fit,$transition,json_encode($schedule,JSON_UNESCAPED_UNICODE)]);
+            try{$sound=normalize_clip_audio(is_array($item['audio']??null)?$item['audio']:[],$org);}catch(InvalidArgumentException $e){fail($e->getMessage(),422);}
+            db_run('INSERT INTO playlist_items(playlist_id,media_id,position,duration_sec,fit,transition,schedule_json,audio_json) VALUES(?,?,?,?,?,?,?,?)',[$id,$media,$pos++,$duration,$fit,$transition,json_encode($schedule,JSON_UNESCAPED_UNICODE),json_encode($sound,JSON_UNESCAPED_UNICODE)]);
         }
-        db_run('UPDATE playlists SET revision=revision+1 WHERE id=?',[$id]);db()->commit();return ['revision'=>$revision+1];
+        try{$music=normalize_soundtrack($soundtrack,$org);}catch(InvalidArgumentException $e){fail($e->getMessage(),422);}
+        db_run('UPDATE playlists SET revision=revision+1,soundtrack_json=? WHERE id=?',[json_encode($music,JSON_UNESCAPED_UNICODE),$id]);db()->commit();return ['revision'=>$revision+1];
     }catch(Throwable $e){if(db()->inTransaction())db()->rollBack();throw $e;}
 }
 require_once __DIR__.'/storage.php';
+require_once __DIR__.'/audio.php';
