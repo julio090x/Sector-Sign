@@ -245,7 +245,10 @@ try{
  case 'catalog.list':
     ok(['items'=>db_all('SELECT external_id,name,presentation,public_price,min_quantity,promotional,media_id,updated_at FROM catalog_products WHERE org_id=? AND enabled=1 ORDER BY updated_at DESC LIMIT 200',[$org])]);
  case 'integrations.list':
-    ok(['items'=>db_all('SELECT id,name,key_id,enabled,auto_publish,last_sync_at FROM integrations WHERE org_id=? ORDER BY id',[$org])]);
+    $connections=db_all('SELECT id,name,key_id,enabled,auto_publish,last_sync_at FROM integrations WHERE org_id=? ORDER BY id',[$org]);
+    foreach($connections as &$conn){$conn['sync_health']=inventory_sync_health($conn['last_sync_at'],(bool)$conn['enabled']);}
+    unset($conn);
+    ok(['items'=>$connections]);
  case 'integrations.create':
     if(!extension_loaded('sodium'))fail('Falta la extensión PHP sodium');
     $name=required($p,'name',120);$key=bin2hex(random_bytes(10));$secret=bin2hex(random_bytes(32));
