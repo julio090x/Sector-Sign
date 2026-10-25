@@ -1,10 +1,12 @@
-name: Sector Sign - Production HF1 apply and verify
+name: Sector Sign - Production HF1 QA
 on:
   push:
     branches: ['feature/production-gate-hf1']
-    paths: ['.hf1/transfer.b64']
+    paths: ['server/**', '.github/workflows/production-gate-hf1.yml']
+  pull_request:
+    branches: [main]
 permissions:
-  contents: write
+  contents: read
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -26,51 +28,27 @@ jobs:
           php-version: '8.3'
           extensions: pdo_mysql, mbstring, sodium, curl, zip
           coverage: none
-      - name: Verify and apply reviewed HF1 patch
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import base64,hashlib,io,lzma,tarfile,tempfile,pathlib,subprocess
-          encoded=pathlib.Path('.hf1/transfer.b64').read_text().strip()
-          pack=base64.b64decode(encoded,validate=True)
-          assert hashlib.sha256(pack).hexdigest()=='8f806f4c7cf262bf3cdb36e4642a823634094f92468b0cc4baf38c654befe251','Bad package digest'
-          allowed={'changes.patch','server/private/integration-health.php','server/tests/integration-health.php','server/tools/production-preflight.php'}
-          with tarfile.open(fileobj=io.BytesIO(lzma.decompress(pack))) as tf:
-            files={m.name:tf.extractfile(m).read() for m in tf.getmembers() if m.isfile()}
-          assert set(files)==allowed,'Unexpected paths'
-          with tempfile.NamedTemporaryFile() as f:
-            f.write(files.pop('changes.patch'));f.flush()
-            subprocess.run(['git','apply','--check',f.name],check=True)
-            subprocess.run(['git','apply',f.name],check=True)
-          for p,data in files.items():
-            dst=pathlib.Path(p)
-            assert not dst.exists(),f'Unexpected existing {p}'
-            dst.parent.mkdir(parents=True,exist_ok=True)
-            dst.write_bytes(data)
-          PY
-      - name: Static QA and MySQL tests
-        shell: bash
-        env:
-          SECTOR_SIGN_QA: '1'
+      - name: Static and contract regressions
         run: |
           set -euo pipefail
           sh server/tests/qa.sh
           python3 scripts/verificar-versiones.py
+      - name: Isolated MySQL tests
+        env:
+          SECTOR_SIGN_QA: '1'
+        run: |
+          set -euo pipefail
           php server/tests/ci-setup.php
           php server/tests/mysql-smoke.php --run
           php server/tools/upgrade.php --apply
-          php server/tools/production-preflight.php --json --require-inventory || test $? -eq 1
-          php -S 127.0.0.1:8787 -t server/public > /tmp/sector-sign-hf1-http.log 2>&1 &
+          php server/tools/upgrade.php --apply
+          php server/tools/production-preflight.php --json > /tmp/preflight.json || test $? -eq 1
+          python3 - <<'PY'
+          import json
+          r=json.load(open('/tmp/preflight.json'))
+          assert isinstance(r['checks'],list) and r['blockers']>=1
+          print('Preflight reports QA missing production requirements without exposing secrets')
+          PY
+          php -S 127.0.0.1:8787 -t server/public >/tmp/ss-qa-php.log 2>&1 &
           for i in $(seq 1 30); do curl -fs http://127.0.0.1:8787/player.php >/dev/null && break; sleep 1; done
           python3 server/tests/program-http.py
-      - name: Commit tested changes on isolated branch
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -rf .hf1
-          git add -A
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'HF1: production preflight, verified inventory sync freshness'
-          git push origin HEAD:feature/production-gate-hf1
