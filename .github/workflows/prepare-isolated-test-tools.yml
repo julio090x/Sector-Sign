@@ -1,0 +1,45 @@
+name: Sector Sign - Isolated test toolchain
+on:
+  push:
+    branches: ['feature/offline-operations-0100']
+    paths: ['.github/workflows/prepare-isolated-test-tools.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tools:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Prepare minimal Android compiler tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
+          mkdir -p toolchain/android/lib64 toolchain/android/lib toolchain/debs
+          cp "$ANDROID_HOME/platforms/android-35/android.jar" toolchain/android/
+          for file in aapt2 zipalign d8 apksigner; do cp "$ANDROID_HOME/build-tools/35.0.0/$file" toolchain/android/; done
+          cp "$ANDROID_HOME/build-tools/35.0.0/lib/d8.jar" "$ANDROID_HOME/build-tools/35.0.0/lib/apksigner.jar" toolchain/android/lib/
+          cp -a "$ANDROID_HOME/build-tools/35.0.0/lib64/." toolchain/android/lib64/ || true
+      - name: Download signed Debian packages for isolated local QA
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm -v "$PWD/toolchain/debs:/deps" debian:trixie-slim sh -c 'apt-get update && apt-get -y --download-only -o Dir::Cache::archives=/deps install php8.4-cli php8.4-mysql php8.4-zip php8.4-curl php8.4-mbstring mariadb-server'
+          sudo rm -rf toolchain/debs/partial toolchain/debs/lock
+          find toolchain -type f -exec sha256sum {} \; > toolchain-SHA256.txt
+          tar -czf isolated-test-tools.tar.gz toolchain toolchain-SHA256.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SectorSign-Isolated-Test-Tools
+          path: isolated-test-tools.tar.gz
+          if-no-files-found: error
+          retention-days: 3
