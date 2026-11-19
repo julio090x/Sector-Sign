@@ -1,0 +1,64 @@
+name: Sector Sign - Windows desktop 0.11.4
+on:
+  push:
+    branches: ['feature/windows-webview2-20261119']
+    paths:
+      - 'windows-bootstrap/sources.tar.xz.b64'
+      - '.github/workflows/build-windows-20261119.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+      - name: Extract checked Windows sources
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $str = (Get-Content 'windows-bootstrap/sources.tar.xz.b64' -Raw).Trim()
+          $bytes = [Convert]::FromBase64String($str)
+          [System.IO.File]::WriteAllBytes('windows-source.tar.xz', $bytes)
+          $digest = (Get-FileHash -Algorithm SHA256 'windows-source.tar.xz').Hash.ToLowerInvariant()
+          if ($digest -ne '89938353ca1e007a38df905b4045a6f8247b2fb5316636b3872b143eb93c4b7b') { throw "Source archive digest mismatch: $digest" }
+          tar -xf windows-source.tar.xz
+          if (!(Test-Path windows-desktop/Program.cs)) { throw 'Missing desktop source' }
+      - name: Publish self-contained Windows x64 application
+        shell: pwsh
+        run: |
+          dotnet publish windows-desktop/SectorSign.Windows.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishTrimmed=false -o release/windows
+          if ($LASTEXITCODE -ne 0) { throw 'dotnet publish failed' }
+          if (!(Test-Path release/windows/SectorSign.Windows.exe)) { throw 'Missing Windows executable' }
+      - name: Package installable Windows delivery
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          New-Item -ItemType Directory -Path 'delivery/SectorSign-Windows' -Force | Out-Null
+          Copy-Item release/windows/* delivery/SectorSign-Windows/ -Recurse -Force
+          Copy-Item windows-desktop/instalar.cmd delivery/SectorSign-Windows/
+          Copy-Item windows-desktop/desinstalar.cmd delivery/SectorSign-Windows/
+          Copy-Item windows-desktop/README.md delivery/SectorSign-Windows/
+          Compress-Archive -Path 'delivery/SectorSign-Windows' -DestinationPath 'delivery/SectorSign-Windows-0.11.4-rc1.zip'
+          (Get-FileHash -Algorithm SHA256 delivery/SectorSign-Windows-0.11.4-rc1.zip).Hash.ToLowerInvariant() + '  SectorSign-Windows-0.11.4-rc1.zip' | Out-File -Encoding utf8 delivery/SHA256.txt
+          Write-Host "Windows executable and portable installer ready"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SectorSign-Windows-0.11.4-rc1
+          path: |
+            delivery/SectorSign-Windows-0.11.4-rc1.zip
+            delivery/SHA256.txt
+          if-no-files-found: error
+          retention-days: 30
+      - name: Commit editable Windows sources on isolated branch
+        shell: pwsh
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add windows-desktop
+          git commit -m "Add build-verified Sector Sign Windows WebView2 sources"
+          if ($LASTEXITCODE -eq 0) { git push origin HEAD:feature/windows-webview2-20261119; if ($LASTEXITCODE -ne 0) { throw "Cannot push verified source" } }
