@@ -1,0 +1,32 @@
+name: Sector Sign - Clean Windows build output
+on:
+  push:
+    branches: ['feature/windows-webview2-20261119']
+    paths: ['.github/workflows/cleanup-windows-sources.yml']
+permissions:
+  contents: write
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - name: Keep editable sources only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm -r --cached -f windows-desktop/bin windows-desktop/obj
+          rm -rf windows-desktop/bin windows-desktop/obj
+          cat > windows-desktop/.gitignore <<'EOF'
+          bin/
+          obj/
+          .vs/
+          *.user
+          *.suo
+          publish/
+          EOF
+          git add windows-desktop/.gitignore
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+julio090x@users.noreply.github.com'
+          git commit -m 'Keep Windows source tree clean: exclude generated binaries and intermediate build files'
+          git push origin HEAD:feature/windows-webview2-20261119
